@@ -12,7 +12,7 @@ urlpatterns = [
     
     # Humare API URLs
     path('api/auth/', include('accounts.urls')),
-    
+    path('api/resources/', include('resources.urls')),
     # Root (/) waala path hata diya gaya hai
 ]
 

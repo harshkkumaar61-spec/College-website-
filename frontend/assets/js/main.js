@@ -1,7 +1,7 @@
 // ===== GLOBAL VARIABLES =====
-const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api'; // <-- YEH NGROK URL HAI
+const API_BASE = 'http://localhost:8000/api';
 let currentUser = null;
-let authToken = localStorage.getItem('authToken'); // Token ko load kiya
+let authToken = localStorage.getItem('authToken');
 let currentResources = [];
 
 // ===== INITIALIZATION =====
@@ -10,88 +10,112 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 async function initializeApp() {
-    // Check authentication status
+    // --- YEH NAYA CODE ADD HUA HAI (Email verification check) ---
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('verify_token');
+    
+    if (token) {
+        // Agar URL mein token hai, toh use verify karne ki koshish karo
+        await verifyEmailToken(token);
+        // Clean URL (token hata do)
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    // --- YAHAN TAK ---
+
     if (authToken) {
-        // Agar token hai, toh profile fetch karne ki koshish karo
         await fetchUserProfile(); 
     } else {
-        // Agar token nahi hai, toh logged-out UI dikhao
         updateNavForLoggedInUser();
     }
-
-    // Load initial data
     loadResources();
     loadSubjects();
-
-    // Setup event listeners
     setupEventListeners();
-
-    // Initialize scroll to top button
     initScrollToTop();
-    
-    // Naye dropdown ke liye listener setup karein
     setupDropdownListener();
 }
 
 function setupEventListeners() {
-    // Search functionality
-    document.getElementById('searchInput').addEventListener('input', debounce(searchResources, 300));
-    document.getElementById('searchInput').addEventListener('keypress', function (e) {
+    // Search
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.querySelector('.btn-search');
+    
+    searchInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
-            searchResources();
+            e.preventDefault(); 
+            loadResources();
         }
     });
+    if (searchButton) {
+        searchButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            loadResources();
+        });
+    }
 
-    // Filter changes
+    // Filters
     document.getElementById('subjectFilter').addEventListener('change', loadResources);
     document.getElementById('typeFilter').addEventListener('change', loadResources);
     document.getElementById('yearFilter').addEventListener('change', loadResources);
     document.getElementById('semesterFilter').addEventListener('change', loadResources);
 
-    // Modal events
+    // Modals
     setupModalEvents();
 
-    // Navigation smooth scroll
+    // Smooth scroll
     setupSmoothScroll();
 }
 
 // ===== AUTHENTICATION FUNCTIONS =====
+
+// --- YEH NAYA FUNCTION ADD HUA HAI (Email verification check) ---
+async function verifyEmailToken(token) {
+    try {
+        const response = await fetch(`${API_BASE}/auth/verify/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ token: token })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            showNotification(data.message, 'success');
+            openLoginModal(); // Success par login modal kholo
+        } else {
+            showNotification(data.error || 'Verification failed.', 'error');
+        }
+    } catch (error) {
+        console.error('Verification error:', error);
+        showNotification('An error occurred during verification.', 'error');
+    }
+}
+// --- YAHAN TAK ---
+
+
 async function fetchUserProfile() {
-    // YEH FUNCTION AB PAGE REFRESH PAR LOGIN FIX KAREGA
     if (!authToken) {
-        updateNavForLoggedInUser(); // Ensure UI is logged out
+        updateNavForLoggedInUser();
         return;
     }
-    
     try {
         const response = await fetch(`${API_BASE}/auth/profile/`, { 
-            headers: {
-                'Authorization': `Bearer ${authToken}` // Token ko header mein bhej rahe hain
-            }
+            headers: {'Authorization': `Bearer ${authToken}`}
         });
-        
         if (response.ok) {
-            // Agar token valid hai aur details mil gayi
             currentUser = await response.json();
-            updateNavForLoggedInUser(); // Navbar ko update karo
+            updateNavForLoggedInUser();
         } else {
-            // Token invalid (expire) ho gaya hai
             console.error('Token invalid, logging out.');
-            logout(); // Bad token ko clear karo
+            logout();
         }
     } catch (error) {
         console.error('Error fetching profile:', error);
-        logout(); // Error par logout kar dein
+        logout();
     }
 }
 
 function updateNavForLoggedInUser() {
     const navAuth = document.querySelector('.nav-auth');
-    
     if (currentUser && navAuth) {
-        // Check karein ki profile_pic hai ya nahi
         const profilePicUrl = currentUser.profile_pic;
-
         let profileElement = '';
         if (profilePicUrl) {
             profileElement = `<img src="${profilePicUrl}" alt="Profile Picture" class="nav-profile-pic">`;
@@ -100,7 +124,6 @@ function updateNavForLoggedInUser() {
             const initial = firstName.charAt(0).toUpperCase();
             profileElement = `<div class="nav-profile-initial">${initial}</div>`;
         }
-
         navAuth.innerHTML = `
             <button class="btn-primary" onclick="openUploadModal()">
                 <i class="fas fa-upload"></i> Upload Resource
@@ -110,29 +133,25 @@ function updateNavForLoggedInUser() {
             </div>
             <div class="profile-dropdown-menu" id="profileDropdown">
                 <div class="dropdown-header">
-                    <div class="dropdown-profile-icon">
-                        ${profileElement}
-                    </div>
+                    <div class="dropdown-profile-icon">${profileElement}</div>
                     <div class="dropdown-profile-info">
                         <strong>${currentUser.first_name || 'User'} ${currentUser.last_name || ''}</strong>
                         <span>${currentUser.email}</span>
                     </div>
                 </div>
-                <a href="#" class="dropdown-item">
+                <a href="#" class="dropdown-item" onclick="openProfileModal(event)">
                     <i class="fas fa-cog"></i> Settings
                 </a>
-                <a href="#" class="dropdown-item">
+                <a href="#" class="dropdown-item" onclick="openHistoryModal(event)">
                     <i class="fas fa-history"></i> History
                 </a>
                 <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item logout-btn" onclick="logout()">
+                <a href="#" class="dropdown-item logout-btn" onclick="logout(event)">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
             </div>
         `;
-
     } else if (navAuth) {
-        // Logged out state
         navAuth.innerHTML = `
             <button class="btn-login" onclick="openLoginModal()">
                 <i class="fas fa-sign-in-alt"></i> Login
@@ -144,19 +163,15 @@ function updateNavForLoggedInUser() {
     }
 }
 
-function logout() {
+function logout(event) {
+    if(event) event.preventDefault();
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     currentUser = null;
     authToken = null;
-    
     updateNavForLoggedInUser(); 
-    
     const dropdown = document.getElementById('profileDropdown');
-    if (dropdown) {
-        dropdown.classList.remove('active');
-    }
-    
+    if (dropdown) dropdown.classList.remove('active');
     showNotification('You have been logged out.', 'info');
 }
 
@@ -164,6 +179,9 @@ function logout() {
 function setupModalEvents() {
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    document.getElementById('uploadForm').addEventListener('submit', handleUpload);
+    document.getElementById('profileForm').addEventListener('submit', handleProfileUpdate);
+
     window.addEventListener('click', function (event) {
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modal => {
@@ -192,17 +210,59 @@ function closeRegisterModal() {
     document.getElementById('registerModal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
-function openUploadModal() {
+
+async function openUploadModal() {
     if (!authToken) {
         showNotification('Please login to upload resources', 'warning');
         openLoginModal();
         return;
     }
+    await populateUploadFormSubjects(); 
     document.getElementById('uploadModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
 }
+
 function closeUploadModal() {
     document.getElementById('uploadModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
 }
+
+function openProfileModal(event) {
+    if(event) event.preventDefault();
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown) dropdown.classList.remove('active');
+    
+    document.getElementById('profileFirstName').value = currentUser.first_name || '';
+    document.getElementById('profileLastName').value = currentUser.last_name || '';
+    document.getElementById('profileErrors').style.display = 'none';
+    document.getElementById('profilePic').value = null;
+    
+    document.getElementById('profileModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeProfileModal() {
+    document.getElementById('profileModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function openHistoryModal(event) {
+    if(event) event.preventDefault();
+    
+    const dropdown = document.getElementById('profileDropdown');
+    if (dropdown) dropdown.classList.remove('active');
+
+    document.getElementById('historyModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    loadHistory();
+}
+
+function closeHistoryModal() {
+    document.getElementById('historyModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
 function switchToRegister() {
     closeLoginModal();
     openRegisterModal();
@@ -256,6 +316,7 @@ async function handleLogin(e) {
             showNotification('Login successful! Welcome back.', 'success');
             loadResources();
         } else {
+            // Error message yahaan "Account not activated" bhi ho sakta hai
             const errorMsg = data.detail || 'Login failed. Please check your credentials.';
             showNotification(errorMsg, 'error');
         }
@@ -268,6 +329,7 @@ async function handleLogin(e) {
     }
 }
 
+// --- YEH FUNCTION UPDATE HO GAYA HAI (Email Verification) ---
 async function handleRegister(e) {
     e.preventDefault();
     const formData = {
@@ -290,13 +352,14 @@ async function handleRegister(e) {
         });
         const data = await response.json();
         if (response.status === 201) {
-            showNotification('Registration successful! Please login to continue.', 'success');
+            // Ab login modal nahi kholna hai
+            showNotification(data.message, 'success'); // "Please check your email"
             closeRegisterModal();
-            openLoginModal();
-            document.getElementById('loginEmail').value = formData.email;
+            e.target.reset(); // Form ko reset kar do
         } else {
             const errorMsg = data.email ? data.email[0] :
                 data.password ? data.password[0] :
+                data.error ? data.error : // Email send fail error
                 'Registration failed. Please try again.';
             showNotification(errorMsg, 'error');
         }
@@ -308,19 +371,203 @@ async function handleRegister(e) {
         submitBtn.disabled = false;
     }
 }
+// --- YAHAN TAK ---
 
-// ===== RESOURCE MANAGEMENT (Placeholder) =====
+
+async function populateUploadFormSubjects() {
+    const select = document.getElementById('uploadSubject');
+    select.innerHTML = '<option value="">Loading subjects...</option>';
+    try {
+        const response = await fetch(`${API_BASE}/resources/subjects/`);
+        if (!response.ok) throw new Error('Failed to fetch subjects');
+        
+        const subjects = await response.json();
+        
+        if(subjects.length === 0) {
+            select.innerHTML = '<option value="">No subjects found. Please add one in admin.</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">Select a subject...</option>';
+        select.innerHTML += subjects.map(subject => 
+            `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
+        ).join('');
+    } catch (error) {
+        console.error('Error loading subjects for upload:', error);
+        select.innerHTML = '<option value="">Could not load subjects</option>';
+    }
+}
+
+async function handleUpload(e) {
+    e.preventDefault();
+    
+    const title = document.getElementById('uploadTitle').value;
+    const subjectId = document.getElementById('uploadSubject').value;
+    const type = document.getElementById('uploadType').value;
+    const file = document.getElementById('uploadFile').files[0];
+    const errorDiv = document.getElementById('uploadErrors');
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    // Validation
+    if (!file) {
+        errorDiv.textContent = 'Please select a PDF file.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (file.type !== 'application/pdf') {
+        errorDiv.textContent = 'Only PDF files are allowed.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+     if (!subjectId) {
+        errorDiv.textContent = 'Please select a subject.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    errorDiv.style.display = 'none';
+
+    submitBtn.innerHTML = '<div class="loading"></div> Uploading...';
+    submitBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('subject', subjectId);
+    formData.append('resource_type', type);
+    formData.append('pdf_file', file);
+
+    try {
+        const response = await fetch(`${API_BASE}/resources/files/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: formData
+        });
+
+        if (response.status === 201) { // 201 Created
+            showNotification('Resource uploaded! It will be visible after admin approval.', 'success');
+            closeUploadModal();
+            e.target.reset();
+        } else {
+            const data = await response.json();
+            let errorMsg = 'Upload failed. Please try again.';
+            if (data.title) errorMsg = data.title[0];
+            else if (data.subject) errorMsg = data.subject[0];
+            else if (data.pdf_file) errorMsg = data.pdf_file[0];
+            
+            errorDiv.textContent = errorMsg;
+            errorDiv.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        errorDiv.textContent = 'An error occurred. Please check your connection and try again.';
+        errorDiv.style.display = 'block';
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+async function handleProfileUpdate(e) {
+    e.preventDefault();
+    
+    const firstName = document.getElementById('profileFirstName').value;
+    const lastName = document.getElementById('profileLastName').value;
+    const file = document.getElementById('profilePic').files[0];
+    const errorDiv = document.getElementById('profileErrors');
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<div class="loading"></div> Saving...';
+    submitBtn.disabled = true;
+    errorDiv.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('first_name', firstName);
+    formData.append('last_name', lastName);
+    
+    if (file) {
+        if (!['image/jpeg', 'image/png'].includes(file.type)) {
+             errorDiv.textContent = 'Only JPG or PNG files are allowed.';
+             errorDiv.style.display = 'block';
+             submitBtn.innerHTML = originalText;
+             submitBtn.disabled = false;
+             return;
+        }
+        formData.append('profile_pic', file);
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/auth/profile/update/`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            const updatedUser = await response.json();
+            currentUser = updatedUser; 
+            updateNavForLoggedInUser();
+            showNotification('Profile updated successfully!', 'success');
+            closeProfileModal();
+        } else {
+            const data = await response.json();
+            errorDiv.textContent = data.detail || 'Failed to update profile.';
+            errorDiv.style.display = 'block';
+        }
+
+    } catch (error) {
+        console.error('Profile update error:', error);
+        errorDiv.textContent = 'An error occurred. Please try again.';
+        errorDiv.style.display = 'block';
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+
+// ===== RESOURCE MANAGEMENT (API se connected) =====
 async function loadResources() {
-    console.warn('loadResources: /api/resources/ endpoint abhi bana nahi hai.');
-    displayResources(getSampleResources());
+    const subjectFilter = document.getElementById('subjectFilter').value;
+    const typeFilter = document.getElementById('typeFilter').value;
+    const semesterFilter = document.getElementById('semesterFilter').value;
+    const searchInput = document.getElementById('searchInput').value;
+
+    showLoading('resourcesGrid');
+
+    try {
+        let url = `${API_BASE}/resources/files/`;
+        const params = new URLSearchParams();
+
+        if (subjectFilter) params.append('subject', subjectFilter);
+        if (typeFilter) params.append('type', typeFilter);
+        if (semesterFilter) params.append('semester', semesterFilter);
+        if (searchInput) params.append('search', searchInput); 
+
+        if (params.toString()) {
+            url += `?${params.toString()}`;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to fetch resources');
+        }
+        const resources = await response.json();
+        currentResources = resources;
+        displayResources(resources);
+
+    } catch (error) {
+        console.error('Error loading resources:', error);
+        showError('resourcesGrid', 'Failed to load resources. Please try again.');
+    }
 }
-function getSampleResources() {
-    return [
-        { id: 1, type: 'notes', title: 'Mathematics - Calculus Complete Notes', subject_name: 'Mathematics', year: 2024, uploaded_by_name: 'Admin' },
-        { id: 2, type: 'question_paper', title: 'Physics - Final Exam 2023', subject_name: 'Physics', year: 2023, uploaded_by_name: 'Admin' },
-        { id: 3, type: 'syllabus', title: 'Computer Science Syllabus 2024', subject_name: 'Computer Science', year: 2024, uploaded_by_name: 'Admin' }
-    ];
-}
+
+
 function displayResources(resources) {
     const grid = document.getElementById('resourcesGrid');
 
@@ -329,86 +576,103 @@ function displayResources(resources) {
             <div class="no-resources">
                 <i class="fas fa-inbox"></i>
                 <h3>No Resources Found</h3>
-                <p>Try adjusting your filters or search terms</p>
+                <p>Try adjusting your filters or search terms. (Ya admin panel se kuch upload karo)</p>
                 <button class="btn-primary" onclick="clearFilters()">Clear All Filters</button>
             </div>
         `;
         return;
     }
 
-    grid.innerHTML = resources.map(resource => `
+    grid.innerHTML = resources.map(resource => {
+        const subjectName = resource.subject ? resource.subject.name : 'Unknown Subject';
+        const year = new Date(resource.uploaded_at).getFullYear();
+        const uploaderName = resource.uploaded_by || 'Admin';
+
+        return `
         <div class="resource-card" data-id="${resource.id}">
-            <div class="resource-type type-${resource.type}">
-                <i class="${getTypeIcon(resource.type)}"></i> 
-                ${getTypeDisplayName(resource.type)}
+            <div class="resource-type type-${resource.resource_type}">
+                <i class="${getTypeIcon(resource.resource_type)}"></i> 
+                ${getTypeDisplayName(resource.resource_type)}
             </div>
             <h3 class="resource-title">${escapeHtml(resource.title)}</h3>
             <div class="resource-meta">
                 <span class="meta-item">
-                    <i class="fas fa-book-open"></i> ${resource.subject_name || 'Unknown Subject'}
+                    <i class="fas fa-book-open"></i> ${subjectName}
                 </span>
                 <span class="meta-item">
-                    <i class="fas fa-calendar"></i> ${resource.year || 'N/A'}
+                    <i class="fas fa-calendar"></i> ${year}
                 </span>
                 <span class="meta-item">
-                    <i class="fas fa-user-graduate"></i> ${resource.uploaded_by_name || 'Unknown User'}
+                    <i class="fas fa-user-graduate"></i> ${uploaderName}
                 </span>
             </div>
             <p class="resource-description">
                 ${getResourceDescription(resource)}
             </p>
             <div class="resource-actions">
-                <button class="download-btn" onclick="downloadResource(${resource.id})" ${!authToken ? 'disabled' : ''}>
+                <button class="download-btn" onclick="downloadResource(${resource.id}, '${resource.pdf_file}')" ${!authToken ? 'disabled' : ''}>
                     <i class="fas fa-download"></i> 
                     ${authToken ? 'Download PDF' : 'Login to Download'}
                 </button>
-                <button class="preview-btn" onclick="previewResource(${resource.id})">
+                <button class="preview-btn" onclick="previewResource('${resource.pdf_file}')">
                     <i class="fas fa-eye"></i> Preview
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
+
 function getTypeIcon(type) {
-    const icons = {'notes': 'fas fa-book', 'question_paper': 'fas fa-file-pdf', 'syllabus': 'fas fa-clipboard-list'};
+    const icons = {
+        'notes': 'fas fa-book',
+        'question_paper': 'fas fa-file-pdf',
+        'syllabus': 'fas fa-clipboard-list'
+    };
     return icons[type] || 'fas fa-file';
 }
+
 function getTypeDisplayName(type) {
-    const typeMap = {'notes': 'Handwritten Notes', 'question_paper': 'Question Paper', 'syllabus': 'Syllabus'};
-    return typeMap[type] || type;
+    const typeMap = {
+        'notes': 'Handwritten Notes',
+        'question_paper': 'Question Paper',
+        'syllabus': 'Syllabus'
+    };
+    return typeMap[type] || type.replace('_', ' ').toUpperCase();
 }
+
 function getResourceDescription(resource) {
-    if (resource.description) return resource.description;
-    const baseDescription = `Download this ${getTypeDisplayName(resource.type).toLowerCase()} for ${resource.subject_name}`;
-    if (resource.year) return `${baseDescription} from year ${resource.year}.`;
+    const subjectName = resource.subject ? resource.subject.name : 'this subject';
+    const baseDescription = `Download this ${getTypeDisplayName(resource.resource_type).toLowerCase()} for ${subjectName}`;
     return `${baseDescription}.`;
 }
+
 async function loadSubjects() {
-    const subjects = [
-        { id: 1, name: 'Mathematics', semester: 1 },
-        { id: 2, name: 'Physics', semester: 2 },
-        { id: 3, name: 'Computer Science', semester: 3 }
-    ];
-    populateSubjectFilter(subjects);
+    try {
+        const response = await fetch(`${API_BASE}/resources/subjects/`);
+        if (response.ok) {
+            const subjects = await response.json();
+            populateSubjectFilter(subjects);
+        }
+    } catch (error) {
+        console.error('Error loading subjects:', error);
+    }
 }
+
 function populateSubjectFilter(subjects) {
     const subjectSelect = document.getElementById('subjectFilter');
+    if (!subjectSelect) return;
+    
     subjectSelect.innerHTML = '<option value="">All Subjects</option>' +
-        subjects.map(subject => `<option value="${subject.id}">${subject.name} - Sem ${subject.semester}</option>`).join('');
+        subjects.map(subject =>
+            `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
+        ).join('');
 }
+
+// ===== SEARCH AND FILTER =====
 function searchResources() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-    if (searchTerm === '') {
-        displayResources(currentResources);
-        return;
-    }
-    const filteredResources = currentResources.filter(resource =>
-        resource.title.toLowerCase().includes(searchTerm) ||
-        (resource.subject_name && resource.subject_name.toLowerCase().includes(searchTerm)) ||
-        (resource.description && resource.description.toLowerCase().includes(searchTerm))
-    );
-    displayResources(filteredResources);
+    // Is function ki ab zaroorat nahi
 }
+
 function clearFilters() {
     document.getElementById('subjectFilter').value = '';
     document.getElementById('typeFilter').value = '';
@@ -417,21 +681,105 @@ function clearFilters() {
     document.getElementById('searchInput').value = '';
     loadResources();
 }
+
 function loadMoreResources() {
     showNotification('Loading more resources...', 'info');
     loadResources();
 }
-function downloadResource(resourceId) {
+
+// ===== RESOURCE ACTIONS =====
+async function downloadResource(resourceId, pdfUrl) {
     if (!authToken) {
         showNotification('Please login to download resources', 'warning');
         openLoginModal();
         return;
     }
-    showNotification('Download feature will be available soon!', 'info');
+    
+    try {
+        await fetch(`${API_BASE}/resources/files/${resourceId}/download/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+    } catch (error) {
+        console.error('Error logging download:', error);
+    }
+    
+    window.open(pdfUrl, '_blank');
 }
-function previewResource(resourceId) {
-    showNotification('Preview feature coming soon!', 'info');
+
+function previewResource(pdfUrl) {
+    window.open(pdfUrl, '_blank');
 }
+
+async function loadHistory() {
+    const body = document.getElementById('historyModalBody');
+    body.innerHTML = `
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading history...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`${API_BASE}/resources/history/`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch history');
+        }
+        
+        const historyItems = await response.json();
+        
+        if (historyItems.length === 0) {
+            body.innerHTML = `
+                <div class="no-resources" style="text-align: center; padding: 2rem; color: var(--text-gray);">
+                    <i class="fas fa-history" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <h3>No Download History</h3>
+                    <p>You haven't downloaded any resources yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        body.innerHTML = historyItems.map(item => {
+            const resource = item.resource;
+            const downloadTime = new Date(item.downloaded_at).toLocaleString();
+            
+            return `
+            <div class="history-item">
+                <div class="history-item-icon">
+                    <i class="${getTypeIcon(resource.resource_type)}"></i>
+                </div>
+                <div class="history-item-details">
+                    <h4>${escapeHtml(resource.title)}</h4>
+                    <p>${escapeHtml(resource.subject.name)} | Downloaded on: ${downloadTime}</p>
+                </div>
+                <div class="history-item-action">
+                    <button class="btn-secondary" style="padding: 0.5rem 1rem;" onclick="downloadResource(${resource.id}, '${resource.pdf_file}')">
+                        <i class="fas fa-redo"></i> Download Again
+                    </button>
+                </div>
+            </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading history:', error);
+        body.innerHTML = `
+            <div class="error-state" style="text-align: center; padding: 2rem; color: var(--error);">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Failed to load your history. Please try again.</p>
+            </div>
+        `;
+    }
+}
+
 
 // ===== NAVIGATION AND UI =====
 function setupSmoothScroll() {
@@ -445,15 +793,19 @@ function setupSmoothScroll() {
         });
     });
 }
+
 function scrollToResources() {
     document.getElementById('resources').scrollIntoView({ behavior: 'smooth' });
 }
+
 function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
 function initScrollToTop() {
     const scrollBtn = document.getElementById('scrollToTop');
-    if (!scrollBtn) return;
+    if (!scrollBtn) return; 
+
     window.onscroll = () => {
         if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
             scrollBtn.style.display = "block";
@@ -462,6 +814,7 @@ function initScrollToTop() {
         }
     };
 }
+
 function toggleMobileMenu() {
     const navMenu = document.getElementById('navMenu');
     navMenu.classList.toggle('active');
@@ -479,24 +832,52 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+
 function escapeHtml(unsafe) {
     if (typeof unsafe !== 'string') return '';
     return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
+
 function showLoading(containerId) {
     const container = document.getElementById(containerId);
-    container.innerHTML = `<div class="loading-state" style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-gray);"><div class="loading-spinner"></div><p>Loading...</p></div>`;
+    if (!container) return;
+    container.innerHTML = `
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading resources...</p>
+        </div>
+    `;
 }
+
 function showError(containerId, message) {
     const container = document.getElementById(containerId);
-    container.innerHTML = `<div class="error-state" style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--error);"><i class="fas fa-exclamation-triangle"></i><p>${message}</p></div>`;
+    if (!container) return;
+    container.innerHTML = `
+        <div class="error-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Something went wrong</h3>
+            <p>${message}</p>
+            <button class="btn-primary" onclick="loadResources()">Try Again</button>
+        </div>
+    `;
 }
+
 function showNotification(message, type = 'info') {
     const existingNotifications = document.querySelectorAll('.notification');
     existingNotifications.forEach(notification => notification.remove());
+
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    notification.innerHTML = `<div class="notification-content"><i class="fas ${getNotificationIcon(type)}"></i><span>${message}</span><button class="notification-close" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-times"></i></button></div>`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas ${getNotificationIcon(type)}"></i>
+            <span>${message}</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
     document.body.appendChild(notification);
     setTimeout(() => {
         if (notification.parentElement) {
@@ -504,6 +885,7 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 }
+
 function getNotificationIcon(type) {
     const icons = {'success': 'fa-check-circle', 'error': 'fa-exclamation-circle', 'warning': 'fa-exclamation-triangle', 'info': 'fa-info-circle'};
     return icons[type] || 'fa-info-circle';
@@ -512,10 +894,45 @@ function getNotificationIcon(type) {
 // ===== CONTACT FORM =====
 const contactForm = document.querySelector('.contact-form');
 if (contactForm) {
-    contactForm.addEventListener('submit', function (e) {
+    contactForm.addEventListener('submit', async function (e) {
         e.preventDefault();
-        showNotification('Thank you for your message! We\'ll get back to you soon.', 'success');
-        this.reset();
+        
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<div class="loading"></div> Sending...';
+        submitBtn.disabled = true;
+
+        const formData = {
+            name: this.querySelector('input[placeholder="Your Name"]').value,
+            email: this.querySelector('input[placeholder="Your Email"]').value,
+            subject: this.querySelector('input[placeholder="Subject"]').value,
+            message: this.querySelector('textarea[placeholder="Your Message"]').value
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/contact/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showNotification(data.message, 'success');
+                this.reset();
+            } else {
+                showNotification(data.error || 'Failed to send message.', 'error');
+            }
+        } catch (error) {
+            console.error('Contact form error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
     });
 }
 
@@ -538,11 +955,37 @@ const additionalStyles = `
     @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
     .resource-card .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .scroll-to-top { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; background: var(--gradient-primary); color: white; border: none; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 1.25rem; cursor: pointer; box-shadow: var(--shadow-lg); z-index: 999; transition: all 0.3s ease; }
+    
+    .scroll-to-top { 
+        position: fixed; 
+        bottom: 30px; 
+        right: 100px; 
+        width: 50px; 
+        height: 50px; 
+        background: var(--gradient-primary); 
+        color: white; 
+        border: none; 
+        border-radius: 50%; 
+        display: none; 
+        align-items: center; 
+        justify-content: center; 
+        font-size: 1.25rem; 
+        cursor: pointer; 
+        box-shadow: var(--shadow-lg); 
+        z-index: 999; 
+        transition: all 0.3s ease; 
+    }
     .scroll-to-top:hover { transform: translateY(-5px); }
+    
     @media (max-width: 768px) {
         .notification { top: 80px; left: 20px; right: 20px; max-width: none; }
-        .scroll-to-top { width: 40px; height: 40px; font-size: 1rem; bottom: 20px; right: 20px; }
+        .scroll-to-top { 
+            width: 40px; 
+            height: 40px; 
+            font-size: 1rem; 
+            bottom: 20px; 
+            right: 80px;
+        }
     }
 `;
 const styleSheet = document.createElement('style');

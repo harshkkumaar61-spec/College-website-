@@ -5,26 +5,19 @@ import sys
 from pathlib import Path
 from datetime import timedelta
 
-# BASE_DIR ko aapke structure ke hisaab se set kiya hai
 BASE_DIR = Path(__file__).resolve().parent.parent 
-
-# 'apps' folder ko Python ke search path mein add kar rahe hain
 sys.path.append(str(BASE_DIR / 'apps'))
-
 
 SECRET_KEY = 'django-insecure-gnji_y%1(dlb)&(6i=)&n%j*^0^m3#_vtv2h_nraf6n$u^g6yc'
 DEBUG = True
 
-# --- NGROK AUR VERCEL KO ALLOW KAREIN ---
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '.ngrok-free.app', # Generic
-    'ungregariously-unbangled-braxton.ngrok-free.dev' # Aapka Ngrok URL
+    '.ngrok-free.app', 
+    'ungregariously-unbangled-braxton.ngrok-free.dev'
 ]
 
-
-# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -36,12 +29,13 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'accounts', 
+    'resources',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Yeh CommonMiddleware se upar hona chahiye
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware', 
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -68,11 +62,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-
-# Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',  # Humne MySQL set kiya tha
+        'ENGINE': 'django.db.backends.mysql',
         'NAME': 'college_hub_db',        
         'USER': 'root',                  
         'PASSWORD': 'secret@code', # YEH PASSWORD SAHI HONA CHAHIYE
@@ -81,8 +73,6 @@ DATABASES = {
     }
 }
 
-
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
@@ -97,21 +87,19 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# --- Custom User Model ---
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-# --- CORS Settings (VERCEL FIX) ---
-# Ab hum 'null' ya 'localhost' ki jagah Vercel URL ko allow karenge
 CORS_ALLOWED_ORIGINS = [
-    "https://ai-study-hub-delta.vercel.app", # <-- AAPKA VERCEL URL
-    "http://localhost:5500", # Local testing ke liye (agar zaroorat pade)
+    "https://ai-study-hub-delta.vercel.app",
+    "http://localhost:5500",
     "http://127.0.0.1:5500",
-    "null", # Local file (file://) ke liye (testing ke dauraan)
+    "null",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "https://ungregariously-unbangled-braxton.ngrok-free.dev",
+    "https://*.ngrok-free.app"
 ]
 
-
-# --- REST Framework aur Simple JWT ki settings ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -123,6 +111,16 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
-# --- Media Files (Uploaded Images) Settings ---
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# --- YEH SECTION POORA BADAL DIYA GAYA HAI ---
+# Asli Email (Gmail) settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'hk015609@gmail.com' # <-- YAHAN APNA GMAIL EMAIL DAALO
+EMAIL_HOST_PASSWORD = 'wgdy tejb ovdz nwix' # <-- YAHAN APNA 16-DIGIT APP PASSWORD DAALO
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# --- YAHAN TAK ---

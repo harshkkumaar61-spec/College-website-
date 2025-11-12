@@ -3,29 +3,49 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.mail import send_mail
+from django.conf import settings
+from django.shortcuts import get_object_or_404 # Naya import
+from .models import CustomUser # Naya import
+from .serializers import (
+    UserCreateSerializer, 
+    MyTokenObtainPairSerializer, 
+    UserProfileSerializer,
+    UserUpdateSerializer,
+    ContactFormSerializer
+)
 
-# Serializers ko import kar rahe hain
-from .serializers import UserCreateSerializer, MyTokenObtainPairSerializer, UserProfileSerializer # Naya serializer
-
-# --- YEH NAYI VIEW CLASS ADD KI GAYI HAI ---
+# --- REFRESH FIX KE LIYE VIEW ---
 class UserProfileView(APIView):
-    """
-    Token ke basis par user ki details fetch karne ke liye (Refresh fix ke liye).
-    """
-    permission_classes = [permissions.IsAuthenticated] # Sirf logged-in user hi access kar sakta hai
+    permission_classes = [permissions.IsAuthenticated] 
 
     def get(self, request, *args, **kwargs):
-        # 'request.user' mein authenticated user ki details hoti hain
         serializer = UserProfileSerializer(request.user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
-# --- YAHAN TAK ---
+
+# --- Profile Update ke liye ---
+class UserProfileUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def patch(self, request, *args, **kwargs):
+        user = request.user
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            updated_data = UserProfileSerializer(user, context={'request': request}).data
+            return Response(updated_data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# --- Yeh humari Register View hai ---
+# --- YEH POORI REGISTER VIEW BADAL DI GAYI HAI ---
 class RegisterView(APIView):
     """
     Naye user ko register karne ke liye API endpoint.
-    Yeh sirf register karega, login nahi karwayega.
+    Ab yeh verification email bhejega.
     """
     permission_classes = [permissions.AllowAny]
     serializer_class = UserCreateSerializer
@@ -34,26 +54,170 @@ class RegisterView(APIView):
         serializer = self.serializer_class(data=request.data)
         
         if serializer.is_valid():
-            user = serializer.save()
+            # User ko save karo (is_active=False ke saath)
+            user = serializer.save() 
+            
+            # --- Feature 1: Verification Email Bhejo ---
+            try:
+                # Link banao
+                # IMPORTANT: Yahaan 'frontend_url' ko Vercel URL se badalna hoga
+                frontend_url = 'https://ai-study-hub-delta.vercel.app' # <-- AAPKA VERCEL URL
+                verification_link = f"{frontend_url}/?verify_token={user.verification_token}"
+                
+                # Email body
+                subject = 'Activate your AI Study Hub Account'
+                message = f"""
+                Hi {user.first_name},
+
+                Thank you for registering at AI Study Hub!
+                Please click the link below to activate your account:
+                
+                {verification_link}
+                
+                Thanks,
+                The AI Study Hub Team
+                """
+                
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email] # User ko email bhejo
+                )
+            except Exception as e:
+                print(f"User verification email bhejte waqt error: {e}")
+                # Agar email fail ho, toh user ko delete kar do taaki woh dobara try kar sake
+                user.delete()
+                return Response(
+                    {"error": "Could not send verification email. Please try again."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # --- Feature 2: Admin ko Notification Bhejo ---
+            try:
+                admin_subject = f'New User Registration: {user.email}'
+                admin_message = f"""
+                A new user has registered on the website:
+                
+                Email: {user.email}
+                First Name: {user.first_name}
+                Last Name: {user.last_name}
+                
+                The user needs to verify their email address.
+                """
+                send_mail(
+                    admin_subject,
+                    admin_message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    ['hk015609@gmail.com'] # <-- YAHAN APNA ADMIN EMAIL DAALO
+                )
+            except Exception as e:
+                print(f"Admin notification email bhejte waqt error: {e}")
+                # Is error par fail nahi hona hai, bas console mein print kar do
+            
+            # Frontend ko success message bhejo
             return Response(
-                {"message": "User registered successfully! Please login."}, 
+                {"message": "Registration successful! Please check your email to verify your account."}, 
                 status=status.HTTP_201_CREATED
             )
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# --- YAHAN TAK ---
 
-    def get_serializer_context(self):
-        return {'request': self.request}
+# --- YEH NAYI VIEW CLASS ADD HUI HAI (Verification link ke liye) ---
+class VerifyEmailView(APIView):
+    """
+    Email se token lene ke liye.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        token = request.data.get('token')
+        
+        if not token:
+            return Response({"error": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Token se user ko dhoondo
+            user = get_object_or_404(CustomUser, verification_token=token)
+            
+            if user.is_active:
+                return Response({"message": "Account already activated. Please login."}, status=status.HTTP_200_OK)
+                
+            # User ko active karo
+            user.is_active = True
+            user.save()
+            
+            return Response(
+                {"message": "Account activated successfully! You can now login."},
+                status=status.HTTP_200_OK
+            )
+            
+        except CustomUser.DoesNotExist:
+             return Response({"error": "Invalid or expired token."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# --- YAHAN TAK ---
 
 
-# --- Yeh humari Login View hai ---
+# --- Login View (Update karo taaki inactive user login na kar paaye) ---
 class MyTokenObtainPairView(TokenObtainPairView):
-    """
-    Default Login view ko override kar rahe hain taaki humara
-    custom serializer (MyTokenObtainPairSerializer) use ho.
-    """
     serializer_class = MyTokenObtainPairSerializer
     
+    def post(self, request, *args, **kwargs):
+        # Pehle check karo ki user active hai ya nahi
+        email = request.data.get('email')
+        try:
+            user = CustomUser.objects.get(email=email)
+            if not user.is_active:
+                return Response(
+                    {"detail": "Account not activated. Please check your email for verification link."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+        except CustomUser.DoesNotExist:
+            # User exist nahi karta, default error message dikhega
+            pass
+            
+        # Agar user active hai, toh login attempt karo
+        return super().post(request, *args, **kwargs)
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+# --- Contact Form View ---
+class ContactFormView(APIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = ContactFormSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            name = serializer.validated_data['name']
+            email = serializer.validated_data['email']
+            subject = serializer.validated_data['subject']
+            message = serializer.validated_data['message']
+            
+            full_message = f"FROM: {name} <{email}>\n\nSUBJECT: {subject}\n\nMESSAGE:\n{message}"
+            
+            try:
+                send_mail(
+                    f'New Contact Form Message: {subject}', 
+                    full_message, 
+                    settings.DEFAULT_FROM_EMAIL,
+                    ['hk015609@gmail.com'] # <-- YAHAN APNA ADMIN EMAIL DAALO
+                )
+                return Response(
+                    {"message": "Thank you for your message! We'll get back to you soon."},
+                    status=status.HTTP_200_OK
+                )
+            except Exception as e:
+                print(f"Email bhejte waqt error: {e}")
+                return Response(
+                    {"error": "Could not send message. Please try again later."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -4,25 +4,32 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 # --- REFRESH FIX KE LIYE NAYA SERIALIZER ---
 class UserProfileSerializer(serializers.ModelSerializer):
-    """
-    Sirf user ki details dikhane ke liye serializer (Refresh fix ke liye).
-    """
     profile_pic = serializers.SerializerMethodField()
-
     class Meta:
         model = CustomUser
         fields = ('id', 'email', 'first_name', 'last_name', 'role', 'profile_pic')
 
     def get_profile_pic(self, obj):
-        # Profile pic ka poora URL banayein
         if obj.profile_pic:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.profile_pic.url)
             return obj.profile_pic.url
         return None
-# --- YAHAN TAK ---
 
+# --- Profile Update ke liye ---
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ('first_name', 'last_name', 'profile_pic')
+        
+    def update(self, instance, validated_data):
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        if 'profile_pic' in validated_data:
+             instance.profile_pic = validated_data.get('profile_pic', instance.profile_pic)
+        instance.save()
+        return instance
 
 # --- Register Serializer ---
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -44,11 +51,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 # --- Login Serializer ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """
-    Default token serializer ko customize kar rahe hain
-    taaki woh user ki details bhi response mein bhej sake.
-    """
-    
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -77,3 +79,11 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         }
         
         return data
+
+# --- YEH NAYA SERIALIZER ADD KARO (Contact Form ke liye) ---
+class ContactFormSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    subject = serializers.CharField(max_length=200)
+    message = serializers.CharField()
+# --- YAHAN TAK ---

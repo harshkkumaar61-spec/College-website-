@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group, Permission
+import uuid # Token ke liye import kiya
+from django.conf import settings # Naya import
 
 class CustomUserManager(BaseUserManager):
     """
@@ -23,7 +25,7 @@ class CustomUserManager(BaseUserManager):
         """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('is_active', True) # Superuser hamesha active hota hai
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser ke liye is_staff=True hona chahiye.')
@@ -50,10 +52,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     
     profile_pic = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    
+    is_active = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
-    # --- YEH DO FIELDS HUMNE ERROR FIX KARNE KE LIYE ADD KIYE HAIN ---
+    # --- YEH LINE THEEK KAR DI GAYI HAI ---
+    # Humne 'unique=True' hata diya hai
+    verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
+    # --- YAHAN TAK ---
+
     groups = models.ManyToManyField(
         Group,
         verbose_name=('groups'),
@@ -62,7 +69,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             'The groups this user belongs to. A user will get all permissions '
             'granted to each of their groups.'
         ),
-        related_name="custom_user_groups",  # Unique naam
+        related_name="custom_user_groups",
         related_query_name="user",
     )
     user_permissions = models.ManyToManyField(
@@ -70,12 +77,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name=('user permissions'),
         blank=True,
         help_text=('Specific permissions for this user.'),
-        related_name="custom_user_permissions", # Unique naam
+        related_name="custom_user_permissions",
         related_query_name="user",
     )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name'] # email aur password by default required hote hain
+    REQUIRED_FIELDS = ['first_name', 'last_name'] 
 
     objects = CustomUserManager()
 
