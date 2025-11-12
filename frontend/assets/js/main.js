@@ -1,5 +1,5 @@
 // ===== GLOBAL VARIABLES =====
-const API_BASE = 'http://localhost:8000/api'; // <-- YEH WAPAS LOCALHOST HAI
+const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api'; // <-- YEH NGROK URL HAI
 let currentUser = null;
 let authToken = localStorage.getItem('authToken'); // Token ko load kiya
 let currentResources = [];
@@ -309,62 +309,18 @@ async function handleRegister(e) {
     }
 }
 
-// ===== RESOURCE MANAGEMENT =====
+// ===== RESOURCE MANAGEMENT (Placeholder) =====
 async function loadResources() {
-    const subjectFilter = document.getElementById('subjectFilter').value;
-    const typeFilter = document.getElementById('typeFilter').value;
-    const yearFilter = document.getElementById('yearFilter').value;
-    const semesterFilter = document.getElementById('semesterFilter').value;
-
-    showLoading('resourcesGrid');
-
-    try {
-        let url = `${API_BASE}/resources/`; // Yeh endpoint humein abhi banana hai
-        const params = new URLSearchParams();
-
-        if (subjectFilter) params.append('subject', subjectFilter);
-        if (typeFilter) params.append('type', typeFilter);
-        if (yearFilter) params.append('year', yearFilter);
-
-        if (params.toString()) {
-            url += `?${params.toString()}`;
-        }
-
-        // --- ABHI KE LIYE PLACEHOLDER ---
-        // Kyunki /api/resources/ abhi bana nahi hai
-        // Hum sample data dikhayenge
-        console.warn('loadResources: /api/resources/ endpoint abhi bana nahi hai. Sample data use kar rahe hain.');
-        const resources = getSampleResources();
-        currentResources = resources;
-        displayResources(resources);
-        
-        // --- ASLI CODE (JAB BACKEND READY HOGA) ---
-        /*
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('Failed to fetch resources');
-        }
-        const resources = await response.json();
-        currentResources = resources;
-        displayResources(resources);
-        */
-
-    } catch (error) {
-        console.error('Error loading resources:', error);
-        showError('resourcesGrid', 'Failed to load resources. Please try again.');
-    }
+    console.warn('loadResources: /api/resources/ endpoint abhi bana nahi hai.');
+    displayResources(getSampleResources());
 }
-
 function getSampleResources() {
-    // Yeh sample data hai, backend se aane waale data ki jagah
     return [
         { id: 1, type: 'notes', title: 'Mathematics - Calculus Complete Notes', subject_name: 'Mathematics', year: 2024, uploaded_by_name: 'Admin' },
         { id: 2, type: 'question_paper', title: 'Physics - Final Exam 2023', subject_name: 'Physics', year: 2023, uploaded_by_name: 'Admin' },
         { id: 3, type: 'syllabus', title: 'Computer Science Syllabus 2024', subject_name: 'Computer Science', year: 2024, uploaded_by_name: 'Admin' }
     ];
 }
-
-
 function displayResources(resources) {
     const grid = document.getElementById('resourcesGrid');
 
@@ -413,101 +369,58 @@ function displayResources(resources) {
         </div>
     `).join('');
 }
-
 function getTypeIcon(type) {
-    const icons = {
-        'notes': 'fas fa-book',
-        'question_paper': 'fas fa-file-pdf',
-        'syllabus': 'fas fa-clipboard-list'
-    };
+    const icons = {'notes': 'fas fa-book', 'question_paper': 'fas fa-file-pdf', 'syllabus': 'fas fa-clipboard-list'};
     return icons[type] || 'fas fa-file';
 }
-
 function getTypeDisplayName(type) {
-    const typeMap = {
-        'notes': 'Handwritten Notes',
-        'question_paper': 'Question Paper',
-        'syllabus': 'Syllabus'
-    };
+    const typeMap = {'notes': 'Handwritten Notes', 'question_paper': 'Question Paper', 'syllabus': 'Syllabus'};
     return typeMap[type] || type;
 }
-
 function getResourceDescription(resource) {
-    if (resource.description) {
-        return resource.description;
-    }
-
+    if (resource.description) return resource.description;
     const baseDescription = `Download this ${getTypeDisplayName(resource.type).toLowerCase()} for ${resource.subject_name}`;
-    if (resource.year) {
-        return `${baseDescription} from year ${resource.year}.`;
-    }
+    if (resource.year) return `${baseDescription} from year ${resource.year}.`;
     return `${baseDescription}.`;
 }
-
 async function loadSubjects() {
-    // Yeh function abhi sample data use karega
     const subjects = [
         { id: 1, name: 'Mathematics', semester: 1 },
         { id: 2, name: 'Physics', semester: 2 },
         { id: 3, name: 'Computer Science', semester: 3 }
     ];
     populateSubjectFilter(subjects);
-    
-    /*
-    try {
-        const response = await fetch(`${API_BASE}/resources/subjects/`);
-        if (response.ok) {
-            const subjects = await response.json();
-            populateSubjectFilter(subjects);
-        }
-    } catch (error) {
-        console.error('Error loading subjects:', error);
-    }
-    */
 }
-
 function populateSubjectFilter(subjects) {
     const subjectSelect = document.getElementById('subjectFilter');
     subjectSelect.innerHTML = '<option value="">All Subjects</option>' +
-        subjects.map(subject =>
-            `<option value="${subject.id}">${subject.name} - Sem ${subject.semester}</option>`
-        ).join('');
+        subjects.map(subject => `<option value="${subject.id}">${subject.name} - Sem ${subject.semester}</option>`).join('');
 }
-
-// ===== SEARCH AND FILTER =====
 function searchResources() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-
     if (searchTerm === '') {
         displayResources(currentResources);
         return;
     }
-
     const filteredResources = currentResources.filter(resource =>
         resource.title.toLowerCase().includes(searchTerm) ||
         (resource.subject_name && resource.subject_name.toLowerCase().includes(searchTerm)) ||
         (resource.description && resource.description.toLowerCase().includes(searchTerm))
     );
-
     displayResources(filteredResources);
 }
-
 function clearFilters() {
     document.getElementById('subjectFilter').value = '';
     document.getElementById('typeFilter').value = '';
     document.getElementById('yearFilter').value = '';
     document.getElementById('semesterFilter').value = '';
     document.getElementById('searchInput').value = '';
-
     loadResources();
 }
-
 function loadMoreResources() {
     showNotification('Loading more resources...', 'info');
     loadResources();
 }
-
-// ===== RESOURCE ACTIONS =====
 function downloadResource(resourceId) {
     if (!authToken) {
         showNotification('Please login to download resources', 'warning');
@@ -516,45 +429,31 @@ function downloadResource(resourceId) {
     }
     showNotification('Download feature will be available soon!', 'info');
 }
-
 function previewResource(resourceId) {
-    // Login check ki zaroorat nahi, preview free ho sakta hai
     showNotification('Preview feature coming soon!', 'info');
 }
 
 // ===== NAVIGATION AND UI =====
 function setupSmoothScroll() {
-    // Add smooth scroll to navigation links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
             if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     });
 }
-
 function scrollToResources() {
-    document.getElementById('resources').scrollIntoView({
-        behavior: 'smooth'
-    });
+    document.getElementById('resources').scrollIntoView({ behavior: 'smooth' });
 }
-
 function scrollToTop() {
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
 function initScrollToTop() {
     const scrollBtn = document.getElementById('scrollToTop');
-
+    if (!scrollBtn) return;
     window.onscroll = () => {
         if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
             scrollBtn.style.display = "block";
@@ -563,8 +462,6 @@ function initScrollToTop() {
         }
     };
 }
-
-// Mobile menu functionality
 function toggleMobileMenu() {
     const navMenu = document.getElementById('navMenu');
     navMenu.classList.toggle('active');
@@ -582,208 +479,72 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
-
 function escapeHtml(unsafe) {
-    if (typeof unsafe !== 'string') {
-        return '';
-    }
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    if (typeof unsafe !== 'string') return '';
+    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
-
 function showLoading(containerId) {
     const container = document.getElementById(containerId);
-    container.innerHTML = `
-        <div class="loading-state">
-            <div class="loading-spinner"></div>
-            <p>Loading resources...</p>
-        </div>
-    `;
+    container.innerHTML = `<div class="loading-state" style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-gray);"><div class="loading-spinner"></div><p>Loading...</p></div>`;
 }
-
 function showError(containerId, message) {
     const container = document.getElementById(containerId);
-    container.innerHTML = `
-        <div class="error-state">
-            <i class="fas fa-exclamation-triangle"></i>
-            <h3>Something went wrong</h3>
-            <p>${message}</p>
-            <button class="btn-primary" onclick="loadResources()">Try Again</button>
-        </div>
-    `;
+    container.innerHTML = `<div class="error-state" style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--error);"><i class="fas fa-exclamation-triangle"></i><p>${message}</p></div>`;
 }
-
 function showNotification(message, type = 'info') {
-    // Remove existing notifications
     const existingNotifications = document.querySelectorAll('.notification');
     existingNotifications.forEach(notification => notification.remove());
-
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <i class="fas ${getNotificationIcon(type)}"></i>
-            <span>${message}</span>
-            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-
+    notification.innerHTML = `<div class="notification-content"><i class="fas ${getNotificationIcon(type)}"></i><span>${message}</span><button class="notification-close" onclick="this.parentElement.parentElement.remove()"><i class="fas fa-times"></i></button></div>`;
     document.body.appendChild(notification);
-
-    // Auto remove after 5 seconds
     setTimeout(() => {
         if (notification.parentElement) {
             notification.remove();
         }
     }, 5000);
 }
-
 function getNotificationIcon(type) {
-    const icons = {
-        'success': 'fa-check-circle',
-        'error': 'fa-exclamation-circle',
-        'warning': 'fa-exclamation-triangle',
-        'info': 'fa-info-circle'
-    };
+    const icons = {'success': 'fa-check-circle', 'error': 'fa-exclamation-circle', 'warning': 'fa-exclamation-triangle', 'info': 'fa-info-circle'};
     return icons[type] || 'fa-info-circle';
 }
 
 // ===== CONTACT FORM =====
-document.querySelector('.contact-form')?.addEventListener('submit', function (e) {
-    e.preventDefault();
-    showNotification('Thank you for your message! We\'ll get back to you soon.', 'success');
-    this.reset();
-});
+const contactForm = document.querySelector('.contact-form');
+if (contactForm) {
+    contactForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        showNotification('Thank you for your message! We\'ll get back to you soon.', 'success');
+        this.reset();
+    });
+}
 
 // ===== DYNAMICALLY INJECTED STYLES =====
-// (Kyunki humare paas main.js hi hai, CSS hum yahin inject kar rahe hain)
 const additionalStyles = `
-    .loading-state, .error-state, .no-resources {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 3rem;
-        color: var(--text-gray);
-    }
-    
-    .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid var(--border-color);
-        border-top-color: var(--primary-blue); /* Changed */
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
-    }
-    
-    .notification {
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        background: white;
-        padding: 1rem;
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg);
-        border-left: 4px solid var(--primary-blue);
-        z-index: 10000;
-        max-width: 400px;
-        animation: slideInRight 0.3s ease;
-    }
-    
+    .loading-state, .error-state, .no-resources { grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-gray); }
+    .loading-spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary-blue); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+    .notification { position: fixed; top: 100px; right: 20px; background: white; padding: 1rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border-left: 4px solid var(--primary-blue); z-index: 10000; max-width: 400px; animation: slideInRight 0.3s ease; }
     .notification-success { border-left-color: var(--success); }
     .notification-error { border-left-color: var(--error); }
     .notification-warning { border-left-color: var(--warning); }
     .notification-info { border-left-color: var(--info); }
-    
-    .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .notification-content i {
-        font-size: 1.25rem;
-    }
+    .notification-content { display: flex; align-items: center; gap: 0.75rem; }
+    .notification-content i { font-size: 1.25rem; }
     .notification-success i { color: var(--success); }
     .notification-error i { color: var(--error); }
     .notification-warning i { color: var(--warning); }
     .notification-info i { color: var(--info); }
-
-    .notification-close {
-        background: none;
-        border: none;
-        color: var(--text-light);
-        cursor: pointer;
-        padding: 0.25rem;
-        margin-left: auto;
-    }
-    
-    @keyframes slideInRight {
-        from {
-            opacity: 0;
-            transform: translateX(100%);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-    
-    .resource-card .download-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    .scroll-to-top {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        width: 50px;
-        height: 50px;
-        background: var(--gradient-primary);
-        color: white;
-        border: none;
-        border-radius: 50%;
-        display: none; /* Hidden by default */
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        cursor: pointer;
-        box-shadow: var(--shadow-lg);
-        z-index: 999;
-        transition: all 0.3s ease;
-    }
-    .scroll-to-top:hover {
-        transform: translateY(-5px);
-    }
-
+    .notification-close { background: none; border: none; color: var(--text-light); cursor: pointer; padding: 0.25rem; margin-left: auto; }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    .resource-card .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .scroll-to-top { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; background: var(--gradient-primary); color: white; border: none; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 1.25rem; cursor: pointer; box-shadow: var(--shadow-lg); z-index: 999; transition: all 0.3s ease; }
+    .scroll-to-top:hover { transform: translateY(-5px); }
     @media (max-width: 768px) {
-        .notification {
-            top: 80px;
-            left: 20px;
-            right: 20px;
-            max-width: none;
-        }
-        .scroll-to-top {
-            width: 40px;
-            height: 40px;
-            font-size: 1rem;
-            bottom: 20px;
-            right: 20px;
-        }
+        .notification { top: 80px; left: 20px; right: 20px; max-width: none; }
+        .scroll-to-top { width: 40px; height: 40px; font-size: 1rem; bottom: 20px; right: 20px; }
     }
 `;
-
-// Inject additional styles
 const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
