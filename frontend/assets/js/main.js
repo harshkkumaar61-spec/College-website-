@@ -1,5 +1,6 @@
 // ===== GLOBAL VARIABLES =====
-const API_BASE = 'http://localhost:8000/api';
+// --- YAHAN NAYI LINK DAALO ---
+const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api'; // <-- YEH NGROK URL HAI
 let currentUser = null;
 let authToken = localStorage.getItem('authToken');
 let currentResources = [];
@@ -10,17 +11,13 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 async function initializeApp() {
-    // --- YEH NAYA CODE ADD HUA HAI (Email verification check) ---
     const params = new URLSearchParams(window.location.search);
     const token = params.get('verify_token');
     
     if (token) {
-        // Agar URL mein token hai, toh use verify karne ki koshish karo
         await verifyEmailToken(token);
-        // Clean URL (token hata do)
         window.history.replaceState({}, document.title, window.location.pathname);
     }
-    // --- YAHAN TAK ---
 
     if (authToken) {
         await fetchUserProfile(); 
@@ -66,8 +63,6 @@ function setupEventListeners() {
 }
 
 // ===== AUTHENTICATION FUNCTIONS =====
-
-// --- YEH NAYA FUNCTION ADD HUA HAI (Email verification check) ---
 async function verifyEmailToken(token) {
     try {
         const response = await fetch(`${API_BASE}/auth/verify/`, {
@@ -78,7 +73,7 @@ async function verifyEmailToken(token) {
         const data = await response.json();
         if (response.ok) {
             showNotification(data.message, 'success');
-            openLoginModal(); // Success par login modal kholo
+            openLoginModal();
         } else {
             showNotification(data.error || 'Verification failed.', 'error');
         }
@@ -87,7 +82,6 @@ async function verifyEmailToken(token) {
         showNotification('An error occurred during verification.', 'error');
     }
 }
-// --- YAHAN TAK ---
 
 
 async function fetchUserProfile() {
@@ -316,7 +310,6 @@ async function handleLogin(e) {
             showNotification('Login successful! Welcome back.', 'success');
             loadResources();
         } else {
-            // Error message yahaan "Account not activated" bhi ho sakta hai
             const errorMsg = data.detail || 'Login failed. Please check your credentials.';
             showNotification(errorMsg, 'error');
         }
@@ -329,7 +322,6 @@ async function handleLogin(e) {
     }
 }
 
-// --- YEH FUNCTION UPDATE HO GAYA HAI (Email Verification) ---
 async function handleRegister(e) {
     e.preventDefault();
     const formData = {
@@ -352,14 +344,13 @@ async function handleRegister(e) {
         });
         const data = await response.json();
         if (response.status === 201) {
-            // Ab login modal nahi kholna hai
             showNotification(data.message, 'success'); // "Please check your email"
             closeRegisterModal();
-            e.target.reset(); // Form ko reset kar do
+            e.target.reset();
         } else {
             const errorMsg = data.email ? data.email[0] :
                 data.password ? data.password[0] :
-                data.error ? data.error : // Email send fail error
+                data.error ? data.error :
                 'Registration failed. Please try again.';
             showNotification(errorMsg, 'error');
         }
@@ -371,7 +362,6 @@ async function handleRegister(e) {
         submitBtn.disabled = false;
     }
 }
-// --- YAHAN TAK ---
 
 
 async function populateUploadFormSubjects() {

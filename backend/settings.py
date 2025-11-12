@@ -11,13 +11,16 @@ sys.path.append(str(BASE_DIR / 'apps'))
 SECRET_KEY = 'django-insecure-gnji_y%1(dlb)&(6i=)&n%j*^0^m3#_vtv2h_nraf6n$u^g6yc'
 DEBUG = True
 
+# --- YAHAN NAYI LINK DAALO ---
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '.ngrok-free.app', 
-    'ungregariously-unbangled-braxton.ngrok-free.dev'
+    'ungregariously-unbangled-braxton.ngrok-free.dev' # <-- YAHAN NAYI LINK (bina https://)
 ]
 
+
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -62,6 +65,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
+
+# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -95,10 +100,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "null",
 ]
+
+# --- YAHAN BHI NAYI LINK DAALO ---
 CSRF_TRUSTED_ORIGINS = [
-    "https://ungregariously-unbangled-braxton.ngrok-free.dev",
+    "https://ungregariously-unbangled-braxton.ngrok-free.dev", # <-- YAHAN NAYI LINK
     "https://*.ngrok-free.app"
 ]
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -114,8 +122,7 @@ SIMPLE_JWT = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# --- YEH SECTION POORA BADAL DIYA GAYA HAI ---
-# Asli Email (Gmail) settings
+# Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -123,4 +130,3 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'hk015609@gmail.com' # <-- YAHAN APNA GMAIL EMAIL DAALO
 EMAIL_HOST_PASSWORD = 'wgdy tejb ovdz nwix' # <-- YAHAN APNA 16-DIGIT APP PASSWORD DAALO
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-# --- YAHAN TAK ---
