@@ -72,14 +72,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
-# Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3', # db.sqlite3 root folder mein banegi
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'college_hub_db',
+        'USER': 'root',
+        'PASSWORD': '123456', # <-- Yahaan naya password daal dein
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
-
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
