@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollegeResources - Your Study Material Hub</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/ai-chat.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-graduation-cap"></i>
+                <h2>CollegeResources</h2>
+            </div>
+
+            <div class="nav-menu" id="navMenu">
+                <a href="#home" class="nav-link active">Home</a>
+                <a href="#resources" class="nav-link">Resources</a>
+                <a href="#subjects" class="nav-link">Subjects</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </div>
+
+            <div class="nav-auth">
+                <button class="btn-login" onclick="openLoginModal()">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                <button class="btn-register" onclick="openRegisterModal()">
+                    <i class="fas fa-user-plus"></i> Register
+                </button>
+            </div>
+
+            <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">Your College Notes & PDFs in One Place</h1>
+                <p class="hero-subtitle">
+                    Access question papers, syllabus, and handwritten notes from your college.
+                    Everything you need for exam preparation in one platform.
+                </p>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <h3>500+</h3>
+                        <p>Study Resources</p>
+                    </div>
+                    <div class="stat">
+                        <h3>50+</h3>
+                        <p>Subjects</p>
+                    </div>
+                    <div class="stat">
+                        <h3>1000+</h3>
+                        <p>Happy Students</p>
+                    </div>
+                </div>
+                <div class="hero-buttons">
+                    <button class="btn-primary" onclick="scrollToResources()">
+                        <i class="fas fa-search"></i> Browse Resources
+                    </button>
+                    <button class="btn-secondary" onclick="openUploadModal()">
+                        <i class="fas fa-upload"></i> Upload Notes
+                    </button>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="floating-card">
+                    <div class="card-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h3>Question Papers</h3>
+                    <p>Previous year papers with solutions</p>
+                </div>
+                <div class="floating-card">
+                    <div class="card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3>Study Notes</h3>
+                    <p>Handwritten & digital notes</p>
+                </div>
+                <div class="floating-card">
+                    <div class="card-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h3>Syllabus</h3>
+                    <p>Updated curriculum & topics</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Why Choose CollegeResources?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <h3>Easy Download</h3>
+                    <p>One-click download for all study materials without any restrictions</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>Smart Search</h3>
+                    <p>Find exactly what you need with our advanced search and filters</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Mobile Friendly</h3>
+                    <p>Access your study materials anytime, anywhere on any device</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Quality Content</h3>
+                    <p>All resources are verified by our team for accuracy and quality</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resources Section -->
+    <section id="resources" class="resources">
+        <div class="container">
+            <h2 class="section-title">Study Resources</h2>
+            <p class="section-subtitle">Browse through our collection of study materials</p>
+
+            <!-- Search and Filter Section -->
+            <div class="search-filter-section">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search resources by title or subject...">
+                    <button class="btn-search" onclick="searchResources()">Search</button>
+                </div>
+
+                <div class="filter-section">
+                    <select id="subjectFilter" class="filter-select">
+                        <option value="">All Subjects</option>
+                        <option value="mathematics">Mathematics</option>
+                        <option value="physics">Physics</option>
+                        <option value="chemistry">Chemistry</option>
+                        <option value="computer-science">Computer Science</option>
+                    </select>
+
+                    <select id="typeFilter" class="filter-select">
+                        <option value="">All Types</option>
+                        <option value="notes">Notes</option>
+                        <option value="question_paper">Question Papers</option>
+                        <option value="syllabus">Syllabus</option>
+                    </select>
+
+                    <select id="yearFilter" class="filter-select">
+                        <option value="">All Years</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                        <option value="2021">2021</option>
+                    </select>
+
+                    <select id="semesterFilter" class="filter-select">
+                        <option value="">All Semesters</option>
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                        <option value="3">Semester 3</option>
+                        <option value="4">Semester 4</option>
+                    </select>
+
+                    <button class="btn-primary" onclick="loadResources()">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <button class="btn-secondary" onclick="clearFilters()">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Resources Grid -->
+            <div id="resourcesGrid" class="resources-grid">
+                <!-- Sample Resources - These will be dynamically loaded -->
+                <div class="resource-card">
+                    <div class="resource-type type-notes">
+                        <i class="fas fa-book"></i> Handwritten Notes
+                    </div>
+                    <h3 class="resource-title">Mathematics - Calculus Complete Notes</h3>
+                    <div class="resource-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-book-open"></i> Mathematics
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i> 2024
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas User-graduate"></i> Semester 1
+                        </span>
+                    </div>
+                    <p class="resource-description">
+                        Complete calculus notes covering limits, derivatives, and integration with solved examples.
+                    </p>
+                    <div class="resource-actions">
+                        <button class="download-btn">
+                            <i class="fas fa-download"></i> Download PDF
+                        </button>
+                        <button class="preview-btn">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                    </div>
+                </div>
+
+                <div class="resource-card">
+                    <div class="resource-type type-question_paper">
+                        <i class="fas fa-file-pdf"></i> Question Paper
+                    </div>
+                    <h3 class="resource-title">Physics - Final Exam 2023</h3>
+                    <div class="resource-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-atom"></i> Physics
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i> 2023
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas User-graduate"></i> Semester 2
+                        </span>
+                    </div>
+                    <p class="resource-description">
+                        Previous year question paper with solutions for Physics final examination.
+                    </p>
+                    <div class="resource-actions">
+                        <button class="download-btn">
+                            <i class="fas fa-download"></i> Download PDF
+                        </button>
+                        <button class="preview-btn">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                    </div>
+                </div>
+
+                <div class="resource-card">
+                    <div class="resource-type type-syllabus">
+                        <i class="fas fa-clipboard-list"></i> Syllabus
+                    </div>
+                    <h3 class="resource-title">Computer Science Syllabus 2024</h3>
+                    <div class="resource-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-laptop-code"></i> Computer Science
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i> 2024
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas User-graduate"></i> Semester 3
+                        </span>
+                    </div>
+                    <p class="resource-description">
+                        Updated syllabus for Computer Science including programming, algorithms, and databases.
+                    </p>
+                    <div class="resource-actions">
+                        <button class="download-btn">
+                            <i class="fas fa-download"></i> Download PDF
+                        </button>
+                        <button class="preview-btn">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                    </div>
+                </div>
+
+                <div class="resource-card">
+                    <div class="resource-type type-notes">
+                        <i class="fas fa-book"></i> Handwritten Notes
+                    </div>
+                    <h3 class="resource-title">Chemistry Organic Compounds Notes</h3>
+                    <div class="resource-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-flask"></i> Chemistry
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i> 2024
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas User-graduate"></i> Semester 1
+                        </span>
+                    </div>
+                    <p class="resource-description">
+                        Detailed notes on organic chemistry compounds, reactions, and mechanisms.
+                    </p>
+                    <div class="resource-actions">
+                        <button class="download-btn">
+                            <i class="fas fa-download"></i> Download PDF
+                        </button>
+                        <button class="preview-btn">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Load More Button -->
+            <div class="load-more-section">
+                <button class="btn-load-more" onclick="loadMoreResources()">
+                    <i class="fas fa-redo"></i> Load More Resources
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Subjects Section -->
+    <section id="subjects" class="subjects">
+        <div class="container">
+            <h2 class="section-title">Popular Subjects</h2>
+            <p class="section-subtitle">Explore study materials by subject</p>
+
+            <div class="subjects-grid">
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-calculus"></i>
+                    </div>
+                    <h3>Mathematics</h3>
+                    <p>Calculus, Algebra, Statistics, Discrete Mathematics</p>
+                    <span class="resource-count">150+ Resources</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-atom"></i>
+                    </div>
+                    <h3>Physics</h3>
+                    <p>Mechanics, Electromagnetism, Thermodynamics, Optics</p>
+                    <span class="resource-count">120+ Resources</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-flask"></i>
+                    </div>
+                    <h3>Chemistry</h3>
+                    <p>Organic, Inorganic, Physical Chemistry, Biochemistry</p>
+                    <span class="resource-count">100+ Resources</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-laptop-code"></i>
+                    </div>
+                    <h3>Computer Science</h3>
+                    <p>Programming, Algorithms, Databases, Web Development</p>
+                    <span class="resource-count">200+ Resources</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Electrical Engineering</h3>
+                    <p>Circuits, Electronics, Power Systems, Signals</p>
+                    <span class="resource-count">80+ Resources</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Mechanical Engineering</h3>
+                    <p>Thermodynamics, Mechanics, Manufacturing, Design</p>
+                    <span class="resource-count">70+ Resources</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h2 class="section-title">About CollegeResources</h2>
+                    <p>
+                        CollegeResources is a platform dedicated to helping college students succeed in their academic
+                        journey.
+                        We provide a centralized hub for all study materials including question papers, syllabus, and
+                        handwritten notes.
+                    </p>
+                    <p>
+                        Our mission is to make quality education accessible to every student. We believe that sharing
+                        knowledge
+                        and resources can help create a collaborative learning environment.
+                    </p>
+                    <div class="about-features">
+                        <div class="about-feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Free access to all resources</span>
+                        </div>
+                        <div class="about-feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Quality verified content</span>
+                        </div>
+                        <div class="about-feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Easy to use platform</span>
+                        </div>
+                        <div class="about-feature">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Regular updates</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="about-image">
+                    <div class="image-placeholder">
+                        <i class="fas fa-university"></i>
+                        <p>Learning Together</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <h2 class="section-title">Get In Touch</h2>
+            <p class="section-subtitle">Have questions or suggestions? We'd love to hear from you.</p>
+
+            <div class="contact-content">
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <div>
+                            <h3>Email</h3>
+                            <p>support@collegeresources.com</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <div>
+                            <h3>Phone</h3>
+                            <p>+1 (555) 123-4567</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <h3>Address</h3>
+                            <p>123 Education Street, Learning City, LC 12345</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form class="contact-form">
+                    <input type="text" placeholder="Your Name" required>
+                    <input type="email" placeholder="Your Email" required>
+                    <input type="text" placeholder="Subject" required>
+                    <textarea placeholder="Your Message" rows="5" required></textarea>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-paper-plane"></i> Send Message
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-graduation-cap"></i>
+                        <h3>CollegeResources</h3>
+                    </div>
+                    <p>Your one-stop platform for all college study materials and resources.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#resources">Resources</a></li>
+                        <li><a href="#subjects">Subjects</a></li>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#">Question Papers</a></li>
+                        <li><a href="#">Study Notes</a></li>
+                        <li><a href="#">Syllabus</a></li>
+                        <li><a href="#">Lab Manuals</a></li>
+                        <li><a href="#">Projects</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#">Help Center</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2024 CollegeResources. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLoginModal()">&times;</span>
+            <div class="modal-header">
+                <h2>Welcome Back!</h2>
+                <p>Login to your account</p>
+            </div>
+            <form id="loginForm" class="modal-form">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox">
+                        <input type="checkbox"> Remember me
+                    </label>
+                    <a href="#" class="forgot-password">Forgot Password?</a>
+                </div>
+                <button type="submit" class="btn-primary btn-full">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </form>
+            <div class="modal-footer">
+                <p>Don't have an account? <a href="#" onclick="switchToRegister()">Sign up here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRegisterModal()">&times;</span>
+            <div class="modal-header">
+                <h2>Create Account</h2>
+                <p>Join thousands of students</p>
+            </div>
+            <form id="registerForm" class="modal-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regFirstName">First Name</label>
+                        <input type="text" id="regFirstName" placeholder="First name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regLastName">Last Name</label>
+                        <input type="text" id="regLastName" placeholder="Last name" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email Address</label>
+                    <input type="email" id="regEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" placeholder="Create a password" required>
+                </div>
+                <div class="form-group">
+                    <label for="regCollege">College/University</label>
+                    <input type="text" id="regCollege" placeholder="Your college name">
+                </div>
+                <div class="form-group">
+                    <label for="regRole">I am a</label>
+                    <select id="regRole">
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox">
+                        <input type="checkbox" required> I agree to the <a href="#">Terms of Service</a> and <a
+                            href="#">Privacy Policy</a>
+                    </label>
+                </div>
+                <button type="submit" class="btn-primary btn-full">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </form>
+            <div class="modal-footer">
+                <p>Already have an account? <a href="#" onclick="switchToLogin()">Login here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal (Placeholder) -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeUploadModal()">&times;</span>
+            <div class="modal-header">
+                <h2>Upload Resource</h2>
+                <p>Share your study materials with others</p>
+            </div>
+            <div class="upload-placeholder">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Upload Feature Coming Soon!</h3>
+                <p>We're working on making resource upload available to all users.</p>
+                <button class="btn-primary" onclick="closeUploadModal()">Got It</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Chat Bot Section - Winter ARC Style -->
+    <div class="ai-chat-container" id="aiChatContainer">
+        <!-- AI Chat Header -->
+        <div class="ai-chat-header">
+            <div class="ai-header-left">
+                <div class="ai-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="ai-info">
+                    <h4>AI Study Hub</h4>
+                    <p>Online</p>
+                </div>
+            </div>
+            <button class="ai-close-btn" onclick="toggleAIChat()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- AI Chat Messages Area -->
+        <div class="ai-chat-messages" id="aiChatMessages">
+            <!-- Welcome Message from AI -->
+            <div class="ai-message ai-bot-message">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <p><strong>Hello! I'm your AI study companion.</strong>  How can I help you today?</p>
+                </div>
+            </div>
+        </div> <!-- ✅ YAHAN ai-chat-messages CLOSE HOGYA -->
+
+        <!-- AI Chat Input Area --> <!-- ✅ YEH BAHAR HONA CHAHIYE -->
+        <div class="ai-chat-input">
+            <div class="input-container">
+                <input type="text" id="aiChatInput" placeholder="Ask your AI...">
+                <button class="ai-send-btn" onclick="sendAIMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div> <!-- ✅ YAHAN ai-chat-container CLOSE HOGYA -->
+
+    <!-- AI Chat Toggle Button -->
+    <button class="ai-chat-toggle" id="aiChatToggle" onclick="toggleAIChat()">
+        <i class="fas fa-robot"></i>
+        <span class="ai-notification"></span>
+    </button>
+
+    <!-- Scroll to Top Button --> <!-- ✅ YE EK HI HONA CHAHIYE -->
+    <button id="scrollToTop" class="scroll-to-top" onclick="scrollToTop()">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/ai-chat.js"></script>
+</body>
+
+</html>
