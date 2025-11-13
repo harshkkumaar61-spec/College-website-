@@ -45,23 +45,3 @@ class Resource(models.Model):
     # File ka naam lene ke liye (hum ise API mein use karenge)
     def filename(self):
         return os.path.basename(self.pdf_file.name)
-# ... (aapki Subject aur Resource classes oopar hain) ...
-
-# --- YEH NAYI CLASS ADD KARO ---
-class DownloadHistory(models.Model):
-    """
-    User ki download history ko track karne ke liye model.
-    """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='download_history')
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='downloads')
-    downloaded_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        # User ek hi resource ko ek se zyaada baar download kar sakta hai, 
-        # lekin hum bas 'sabse naya' track kar sakte hain ya har baar naya record bana sakte hain.
-        # Abhi ke liye, har download ka naya record banega.
-        ordering = ['-downloaded_at'] # Sabse naya download upar dikhega
-
-    def __str__(self):
-        return f"{self.user.email} downloaded {self.resource.title}"
-# --- YAHAN TAK ---

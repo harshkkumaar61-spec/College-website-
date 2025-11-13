@@ -5,18 +5,22 @@ import sys
 from pathlib import Path
 from datetime import timedelta
 
+# BASE_DIR ko aapke structure ke hisaab se set kiya hai
 BASE_DIR = Path(__file__).resolve().parent.parent 
+
+# 'apps' folder ko Python ke search path mein add kar rahe hain
 sys.path.append(str(BASE_DIR / 'apps'))
+
 
 SECRET_KEY = 'django-insecure-gnji_y%1(dlb)&(6i=)&n%j*^0^m3#_vtv2h_nraf6n$u^g6yc'
 DEBUG = True
 
-# --- YAHAN NAYI LINK DAALO ---
+# --- YAHAN APNA NGROK URL CHECK KARO ---
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '.ngrok-free.app', 
-    'ungregariously-unbangled-braxton.ngrok-free.dev' # <-- YAHAN NAYI LINK (bina https://)
+    '.ngrok-free.app', # Generic
+    'ungregariously-unbangled-braxton.ngrok-free.dev' # <-- YEH AAPKA NGROK URL HAI
 ]
 
 
@@ -38,7 +42,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Yeh CommonMiddleware se upar hona chahiye
     'django.middleware.common.CommonMiddleware', 
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -78,6 +82,8 @@ DATABASES = {
     }
 }
 
+
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
@@ -92,22 +98,25 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- Custom User Model ---
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
+# --- YEH SECTION FIX KIYA GAYA HAI ---
 CORS_ALLOWED_ORIGINS = [
-    "https://ai-study-hub-delta.vercel.app",
+    "https://ai-study-hub-delta.vercel.app", # <-- AAPKA VERCEL URL
     "http://localhost:5500",
     "http://127.0.0.1:5500",
     "null",
 ]
-
-# --- YAHAN BHI NAYI LINK DAALO ---
 CSRF_TRUSTED_ORIGINS = [
-    "https://ungregariously-unbangled-braxton.ngrok-free.dev", # <-- YAHAN NAYI LINK
+    "https://ungregariously-unbangled-braxton.ngrok-free.dev", # <-- AAPKA NGROK URL
     "https://*.ngrok-free.app"
 ]
+# --- YAHAN TAK ---
 
 
+# --- REST Framework aur Simple JWT ki settings ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -119,6 +128,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
+# --- Media Files (Uploaded Images) Settings ---
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

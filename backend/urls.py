@@ -1,19 +1,14 @@
-"""
-URL configuration for backend project.
-"""
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include # 'include' yahaan import hona chahiye
 from django.conf import settings
 from django.conf.urls.static import static
-# TemplateView hata diya gaya hai
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     
     # Humare API URLs
     path('api/auth/', include('accounts.urls')),
-    path('api/resources/', include('resources.urls')),
-    # Root (/) waala path hata diya gaya hai
+    path('api/resources/', include('resources.urls')), # <-- YEH NAYI LINE ADD KARO
 ]
 
 # Development mein media files serve karne ke liye

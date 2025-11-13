@@ -1,8 +1,7 @@
 // ===== GLOBAL VARIABLES =====
-// --- YAHAN NAYI LINK DAALO ---
-const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api'; // <-- YEH NGROK URL HAI
+const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api';; // <-- YEH WAPAS LOCALHOST HAI
 let currentUser = null;
-let authToken = localStorage.getItem('authToken');
+let authToken = localStorage.getItem('authToken'); // Token ko load kiya
 let currentResources = [];
 
 // ===== INITIALIZATION =====
@@ -11,113 +10,121 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 async function initializeApp() {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('verify_token');
-    
-    if (token) {
-        await verifyEmailToken(token);
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
+    // Check authentication status
     if (authToken) {
+        // Agar token hai, toh profile fetch karne ki koshish karo
         await fetchUserProfile(); 
     } else {
+        // Agar token nahi hai, toh logged-out UI dikhao
         updateNavForLoggedInUser();
     }
-    loadResources();
-    loadSubjects();
+
+    // Load initial data
+    loadResources(); // <-- Ab yeh API se data layega
+    loadSubjects();  // <-- Ab yeh API se data layega
+
+    // Setup event listeners
     setupEventListeners();
+
+    // Initialize scroll to top button
     initScrollToTop();
+    
+    // Naye dropdown ke liye listener setup karein
     setupDropdownListener();
 }
 
 function setupEventListeners() {
-    // Search
-    const searchInput = document.getElementById('searchInput');
-    const searchButton = document.querySelector('.btn-search');
-    
-    searchInput.addEventListener('keypress', function (e) {
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', debounce(searchResources, 300));
+    document.getElementById('searchInput').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
-            e.preventDefault(); 
-            loadResources();
+            searchResources();
         }
     });
-    if (searchButton) {
-        searchButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            loadResources();
-        });
-    }
 
-    // Filters
+    // Filter changes
     document.getElementById('subjectFilter').addEventListener('change', loadResources);
-    document.getElementById('typeFilter').addEventListener('change', loadResources);
+    document.getElementById('typeFilter').addEventListener('change', loadResources
+    );
     document.getElementById('yearFilter').addEventListener('change', loadResources);
     document.getElementById('semesterFilter').addEventListener('change', loadResources);
 
-    // Modals
+    // Modal events
     setupModalEvents();
 
-    // Smooth scroll
+    // Navigation smooth scroll
     setupSmoothScroll();
+    
+    // NAYA FIX: Contact Form ko API se connect karna
+    const contactForm = document.getElementById('contactForm');
+    if (contactForm) {
+        contactForm.addEventListener('submit', handleContactForm);
+    }
+    
+    // NAYA FIX: Upload Form ko API se connect karna
+    const uploadForm = document.getElementById('uploadForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleUpload);
+    }
+    
+    // NAYA FIX: Profile Form ko API se connect karna
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', handleProfileUpdate);
+    }
 }
 
 // ===== AUTHENTICATION FUNCTIONS =====
-async function verifyEmailToken(token) {
-    try {
-        const response = await fetch(`${API_BASE}/auth/verify/`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ token: token })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            showNotification(data.message, 'success');
-            openLoginModal();
-        } else {
-            showNotification(data.error || 'Verification failed.', 'error');
-        }
-    } catch (error) {
-        console.error('Verification error:', error);
-        showNotification('An error occurred during verification.', 'error');
-    }
-}
-
-
 async function fetchUserProfile() {
+    // YEH FUNCTION AB PAGE REFRESH PAR LOGIN FIX KAREGA
     if (!authToken) {
-        updateNavForLoggedInUser();
+        updateNavForLoggedInUser(); // Ensure UI is logged out
         return;
     }
+    
     try {
         const response = await fetch(`${API_BASE}/auth/profile/`, { 
-            headers: {'Authorization': `Bearer ${authToken}`}
+            headers: {
+                'Authorization': `Bearer ${authToken}` // Token ko header mein bhej rahe hain
+            }
         });
+        
         if (response.ok) {
+            // Agar token valid hai aur details mil gayi
             currentUser = await response.json();
-            updateNavForLoggedInUser();
+            updateNavForLoggedInUser(); // Navbar ko update karo
+            
+            // NAYA FIX: Upload modal mein subjects load karo
+            populateUploadSubjects();
+            
         } else {
+            // Token invalid (expire) ho gaya hai
             console.error('Token invalid, logging out.');
-            logout();
+            logout(); // Bad token ko clear karo
         }
     } catch (error) {
         console.error('Error fetching profile:', error);
-        logout();
+        logout(); // Error par logout kar dein
     }
 }
 
 function updateNavForLoggedInUser() {
     const navAuth = document.querySelector('.nav-auth');
+    
     if (currentUser && navAuth) {
+        // Check karein ki profile_pic hai ya nahi
         const profilePicUrl = currentUser.profile_pic;
+
         let profileElement = '';
         if (profilePicUrl) {
-            profileElement = `<img src="${profilePicUrl}" alt="Profile Picture" class="nav-profile-pic">`;
+            // NAYA FIX: URL ke saath cache-busting parameter add karo
+            profileElement = `<img src="${profilePicUrl}?v=${new Date().getTime()}" alt="Profile Picture" class="nav-profile-pic">`;
         } else {
             const firstName = currentUser.first_name || 'User';
             const initial = firstName.charAt(0).toUpperCase();
             profileElement = `<div class="nav-profile-initial">${initial}</div>`;
         }
+
         navAuth.innerHTML = `
             <button class="btn-primary" onclick="openUploadModal()">
                 <i class="fas fa-upload"></i> Upload Resource
@@ -127,25 +134,29 @@ function updateNavForLoggedInUser() {
             </div>
             <div class="profile-dropdown-menu" id="profileDropdown">
                 <div class="dropdown-header">
-                    <div class="dropdown-profile-icon">${profileElement}</div>
+                    <div class="dropdown-profile-icon">
+                        ${profileElement}
+                    </div>
                     <div class="dropdown-profile-info">
                         <strong>${currentUser.first_name || 'User'} ${currentUser.last_name || ''}</strong>
                         <span>${currentUser.email}</span>
                     </div>
                 </div>
-                <a href="#" class="dropdown-item" onclick="openProfileModal(event)">
+                <a href="#" class="dropdown-item" onclick="openProfileModal()">
                     <i class="fas fa-cog"></i> Settings
                 </a>
-                <a href="#" class="dropdown-item" onclick="openHistoryModal(event)">
+                <a href="#" class="dropdown-item" onclick="openHistoryModal()">
                     <i class="fas fa-history"></i> History
                 </a>
                 <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item logout-btn" onclick="logout(event)">
+                <a href="#" class="dropdown-item logout-btn" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
             </div>
         `;
+
     } else if (navAuth) {
+        // Logged out state
         navAuth.innerHTML = `
             <button class="btn-login" onclick="openLoginModal()">
                 <i class="fas fa-sign-in-alt"></i> Login
@@ -157,15 +168,19 @@ function updateNavForLoggedInUser() {
     }
 }
 
-function logout(event) {
-    if(event) event.preventDefault();
+function logout() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     currentUser = null;
     authToken = null;
+    
     updateNavForLoggedInUser(); 
+    
     const dropdown = document.getElementById('profileDropdown');
-    if (dropdown) dropdown.classList.remove('active');
+    if (dropdown) {
+        dropdown.classList.remove('active');
+    }
+    
     showNotification('You have been logged out.', 'info');
 }
 
@@ -173,9 +188,6 @@ function logout(event) {
 function setupModalEvents() {
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('uploadForm').addEventListener('submit', handleUpload);
-    document.getElementById('profileForm').addEventListener('submit', handleProfileUpdate);
-
     window.addEventListener('click', function (event) {
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modal => {
@@ -204,32 +216,35 @@ function closeRegisterModal() {
     document.getElementById('registerModal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
-
-async function openUploadModal() {
+function openUploadModal() {
     if (!authToken) {
         showNotification('Please login to upload resources', 'warning');
         openLoginModal();
         return;
     }
-    await populateUploadFormSubjects(); 
     document.getElementById('uploadModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
-
 function closeUploadModal() {
     document.getElementById('uploadModal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
+function switchToRegister() {
+    closeLoginModal();
+    openRegisterModal();
+}
+function switchToLogin() {
+    closeRegisterModal();
+    openLoginModal();
+}
 
-function openProfileModal(event) {
-    if(event) event.preventDefault();
-    const dropdown = document.getElementById('profileDropdown');
-    if (dropdown) dropdown.classList.remove('active');
+// --- NAYA FIX: Profile aur History Modals ke functions ---
+function openProfileModal() {
+    if (!currentUser) return;
     
-    document.getElementById('profileFirstName').value = currentUser.first_name || '';
-    document.getElementById('profileLastName').value = currentUser.last_name || '';
-    document.getElementById('profileErrors').style.display = 'none';
-    document.getElementById('profilePic').value = null;
+    // Form mein current user data daalo
+    document.getElementById('profileFirstName').value = currentUser.first_name;
+    document.getElementById('profileLastName').value = currentUser.last_name;
     
     document.getElementById('profileModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -240,31 +255,64 @@ function closeProfileModal() {
     document.body.style.overflow = 'auto';
 }
 
-function openHistoryModal(event) {
-    if(event) event.preventDefault();
+async function openHistoryModal() {
+    if (!authToken) {
+        showNotification('Please login to see your history', 'warning');
+        openLoginModal();
+        return;
+    }
     
-    const dropdown = document.getElementById('profileDropdown');
-    if (dropdown) dropdown.classList.remove('active');
-
+    const modalBody = document.getElementById('historyModalBody');
+    modalBody.innerHTML = `
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading history...</p>
+        </div>`;
     document.getElementById('historyModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
-    
-    loadHistory();
+
+    try {
+        const response = await fetch(`${API_BASE}/resources/history/`, {
+            headers: {'Authorization': `Bearer ${authToken}`}
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load history');
+        }
+        
+        const historyItems = await response.json();
+        
+        if (historyItems.length === 0) {
+            modalBody.innerHTML = `<p style="text-align:center; color: var(--text-gray);">You haven't downloaded any resources yet.</p>`;
+            return;
+        }
+
+        modalBody.innerHTML = historyItems.map(item => `
+            <div class="history-item">
+                <i class="history-item-icon ${getTypeIcon(item.resource.resource_type)}"></i>
+                <div class="history-item-details">
+                    <h4>${escapeHtml(item.resource.title)}</h4>
+                    <p>Downloaded on: ${new Date(item.downloaded_at).toLocaleDateString()}</p>
+                </div>
+                <div class="history-item-action">
+                    <button class="preview-btn" style="padding: 0.5rem 1rem;" onclick="previewResource('${item.resource.pdf_file}')">
+                        View
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('History Error:', error);
+        modalBody.innerHTML = `<p style="text-align:center; color: var(--error);">Could not load your history.</p>`;
+    }
 }
 
 function closeHistoryModal() {
     document.getElementById('historyModal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
-
-function switchToRegister() {
-    closeLoginModal();
-    openRegisterModal();
-}
-function switchToLogin() {
-    closeRegisterModal();
-    openLoginModal();
-}
+// --- YAHAN TAK ---
 
 // ===== NAYE DROPDOWN FUNCTIONS =====
 function toggleProfileDropdown(event) {
@@ -309,6 +357,7 @@ async function handleLogin(e) {
             closeLoginModal();
             showNotification('Login successful! Welcome back.', 'success');
             loadResources();
+            populateUploadSubjects(); // NAYA: Login ke baad subjects load karo
         } else {
             const errorMsg = data.detail || 'Login failed. Please check your credentials.';
             showNotification(errorMsg, 'error');
@@ -344,14 +393,15 @@ async function handleRegister(e) {
         });
         const data = await response.json();
         if (response.status === 201) {
-            showNotification(data.message, 'success'); // "Please check your email"
+            // NAYA FIX: Verification message dikhao
+            showNotification(data.message || 'Registration successful! Check your email.', 'success');
             closeRegisterModal();
-            e.target.reset();
+            openLoginModal();
+            document.getElementById('loginEmail').value = formData.email;
         } else {
             const errorMsg = data.email ? data.email[0] :
                 data.password ? data.password[0] :
-                data.error ? data.error :
-                'Registration failed. Please try again.';
+                data.error || 'Registration failed. Please try again.';
             showNotification(errorMsg, 'error');
         }
     } catch (error) {
@@ -363,130 +413,93 @@ async function handleRegister(e) {
     }
 }
 
-
-async function populateUploadFormSubjects() {
-    const select = document.getElementById('uploadSubject');
-    select.innerHTML = '<option value="">Loading subjects...</option>';
-    try {
-        const response = await fetch(`${API_BASE}/resources/subjects/`);
-        if (!response.ok) throw new Error('Failed to fetch subjects');
-        
-        const subjects = await response.json();
-        
-        if(subjects.length === 0) {
-            select.innerHTML = '<option value="">No subjects found. Please add one in admin.</option>';
-            return;
-        }
-
-        select.innerHTML = '<option value="">Select a subject...</option>';
-        select.innerHTML += subjects.map(subject => 
-            `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
-        ).join('');
-    } catch (error) {
-        console.error('Error loading subjects for upload:', error);
-        select.innerHTML = '<option value="">Could not load subjects</option>';
-    }
-}
-
+// --- NAYA FIX: Upload Form Handler ---
 async function handleUpload(e) {
     e.preventDefault();
-    
-    const title = document.getElementById('uploadTitle').value;
-    const subjectId = document.getElementById('uploadSubject').value;
-    const type = document.getElementById('uploadType').value;
-    const file = document.getElementById('uploadFile').files[0];
-    const errorDiv = document.getElementById('uploadErrors');
-    
-    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (!authToken) {
+        showNotification('Your session expired. Please login again.', 'warning');
+        openLoginModal();
+        return;
+    }
+
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const errorContainer = document.getElementById('uploadErrors');
     const originalText = submitBtn.innerHTML;
-
-    // Validation
-    if (!file) {
-        errorDiv.textContent = 'Please select a PDF file.';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (file.type !== 'application/pdf') {
-        errorDiv.textContent = 'Only PDF files are allowed.';
-        errorDiv.style.display = 'block';
-        return;
-    }
-     if (!subjectId) {
-        errorDiv.textContent = 'Please select a subject.';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    errorDiv.style.display = 'none';
-
+    
     submitBtn.innerHTML = '<div class="loading"></div> Uploading...';
     submitBtn.disabled = true;
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
 
     const formData = new FormData();
-    formData.append('title', title);
-    formData.append('subject', subjectId);
-    formData.append('resource_type', type);
-    formData.append('pdf_file', file);
+    formData.append('title', document.getElementById('uploadTitle').value);
+    formData.append('subject', document.getElementById('uploadSubject').value);
+    formData.append('resource_type', document.getElementById('uploadType').value);
+    formData.append('pdf_file', document.getElementById('uploadFile').files[0]);
 
     try {
-        const response = await fetch(`${API_BASE}/resources/files/`, {
+        const response = await fetch(`${API_BASE}/resources/files/create/`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${authToken}`
+                // 'Content-Type' multipart/form-data ke liye browser khud set karta hai
             },
             body: formData
         });
+        
+        const data = await response.json();
 
-        if (response.status === 201) { // 201 Created
-            showNotification('Resource uploaded! It will be visible after admin approval.', 'success');
+        if (response.status === 201) {
+            showNotification('Resource uploaded successfully!', 'success');
             closeUploadModal();
-            e.target.reset();
+            loadResources(); // List refresh karo
+            form.reset();
         } else {
-            const data = await response.json();
-            let errorMsg = 'Upload failed. Please try again.';
-            if (data.title) errorMsg = data.title[0];
-            else if (data.subject) errorMsg = data.subject[0];
-            else if (data.pdf_file) errorMsg = data.pdf_file[0];
-            
-            errorDiv.textContent = errorMsg;
-            errorDiv.style.display = 'block';
+            // Errors dikhao
+            let errors = 'Upload failed. ';
+            if (typeof data === 'object') {
+                errors += Object.values(data).join(' ');
+            }
+            errorContainer.innerHTML = errors;
+            errorContainer.style.display = 'block';
         }
+
     } catch (error) {
         console.error('Upload error:', error);
-        errorDiv.textContent = 'An error occurred. Please check your connection and try again.';
-        errorDiv.style.display = 'block';
+        errorContainer.innerHTML = 'An unexpected error occurred. Please try again.';
+        errorContainer.style.display = 'block';
     } finally {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     }
 }
 
+// --- NAYA FIX: Profile Update Handler ---
 async function handleProfileUpdate(e) {
     e.preventDefault();
-    
-    const firstName = document.getElementById('profileFirstName').value;
-    const lastName = document.getElementById('profileLastName').value;
-    const file = document.getElementById('profilePic').files[0];
-    const errorDiv = document.getElementById('profileErrors');
+    if (!authToken) {
+        showNotification('Your session expired. Please login again.', 'warning');
+        openLoginModal();
+        return;
+    }
 
-    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const errorContainer = document.getElementById('profileErrors');
     const originalText = submitBtn.innerHTML;
+
     submitBtn.innerHTML = '<div class="loading"></div> Saving...';
     submitBtn.disabled = true;
-    errorDiv.style.display = 'none';
+    errorContainer.style.display = 'none';
 
     const formData = new FormData();
-    formData.append('first_name', firstName);
-    formData.append('last_name', lastName);
+    formData.append('first_name', document.getElementById('profileFirstName').value);
+    formData.append('last_name', document.getElementById('profileLastName').value);
     
-    if (file) {
-        if (!['image/jpeg', 'image/png'].includes(file.type)) {
-             errorDiv.textContent = 'Only JPG or PNG files are allowed.';
-             errorDiv.style.display = 'block';
-             submitBtn.innerHTML = originalText;
-             submitBtn.disabled = false;
-             return;
-        }
-        formData.append('profile_pic', file);
+    const profilePicFile = document.getElementById('profilePic').files[0];
+    if (profilePicFile) {
+        formData.append('profile_pic', profilePicFile);
     }
 
     try {
@@ -498,22 +511,21 @@ async function handleProfileUpdate(e) {
             body: formData
         });
 
-        if (response.ok) {
-            const updatedUser = await response.json();
-            currentUser = updatedUser; 
-            updateNavForLoggedInUser();
-            showNotification('Profile updated successfully!', 'success');
-            closeProfileModal();
-        } else {
-            const data = await response.json();
-            errorDiv.textContent = data.detail || 'Failed to update profile.';
-            errorDiv.style.display = 'block';
-        }
+        const data = await response.json();
 
+        if (response.ok) {
+            currentUser = data; // Current user object ko update karo
+            updateNavForLoggedInUser(); // Navbar ko nayi pic ke saath refresh karo
+            closeProfileModal();
+            showNotification('Profile updated successfully!', 'success');
+        } else {
+            errorContainer.innerHTML = 'Failed to update profile. Please try again.';
+            errorContainer.style.display = 'block';
+        }
     } catch (error) {
         console.error('Profile update error:', error);
-        errorDiv.textContent = 'An error occurred. Please try again.';
-        errorDiv.style.display = 'block';
+        errorContainer.innerHTML = 'An unexpected error occurred.';
+        errorContainer.style.display = 'block';
     } finally {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
@@ -521,23 +533,23 @@ async function handleProfileUpdate(e) {
 }
 
 
-// ===== RESOURCE MANAGEMENT (API se connected) =====
+// ===== RESOURCE MANAGEMENT (AB YEH API SE CONNECTED HAI) =====
 async function loadResources() {
     const subjectFilter = document.getElementById('subjectFilter').value;
     const typeFilter = document.getElementById('typeFilter').value;
+    const yearFilter = document.getElementById('yearFilter').value;
     const semesterFilter = document.getElementById('semesterFilter').value;
-    const searchInput = document.getElementById('searchInput').value;
 
     showLoading('resourcesGrid');
 
     try {
-        let url = `${API_BASE}/resources/files/`;
+        let url = `${API_BASE}/resources/files/`; // <-- API ENDPOINT
         const params = new URLSearchParams();
 
         if (subjectFilter) params.append('subject', subjectFilter);
         if (typeFilter) params.append('type', typeFilter);
-        if (semesterFilter) params.append('semester', semesterFilter);
-        if (searchInput) params.append('search', searchInput); 
+        // if (yearFilter) params.append('year', yearFilter); // Humne model mein year nahi daala tha
+        // if (semesterFilter) params.append('semester', semesterFilter);
 
         if (params.toString()) {
             url += `?${params.toString()}`;
@@ -566,7 +578,7 @@ function displayResources(resources) {
             <div class="no-resources">
                 <i class="fas fa-inbox"></i>
                 <h3>No Resources Found</h3>
-                <p>Try adjusting your filters or search terms. (Ya admin panel se kuch upload karo)</p>
+                <p>Try adjusting your filters or search terms.</p>
                 <button class="btn-primary" onclick="clearFilters()">Clear All Filters</button>
             </div>
         `;
@@ -575,8 +587,8 @@ function displayResources(resources) {
 
     grid.innerHTML = resources.map(resource => {
         const subjectName = resource.subject ? resource.subject.name : 'Unknown Subject';
-        const year = new Date(resource.uploaded_at).getFullYear();
-        const uploaderName = resource.uploaded_by || 'Admin';
+        const year = resource.year || new Date(resource.uploaded_at).getFullYear();
+        const uploaderName = resource.uploaded_by ? resource.uploaded_by.first_name : 'Admin';
 
         return `
         <div class="resource-card" data-id="${resource.id}">
@@ -631,17 +643,23 @@ function getTypeDisplayName(type) {
 }
 
 function getResourceDescription(resource) {
+    if (resource.description) {
+        return resource.description;
+    }
     const subjectName = resource.subject ? resource.subject.name : 'this subject';
     const baseDescription = `Download this ${getTypeDisplayName(resource.resource_type).toLowerCase()} for ${subjectName}`;
     return `${baseDescription}.`;
 }
 
 async function loadSubjects() {
+    // Yeh function ab API se subjects layega
     try {
         const response = await fetch(`${API_BASE}/resources/subjects/`);
         if (response.ok) {
             const subjects = await response.json();
             populateSubjectFilter(subjects);
+            // NAYA FIX: Upload modal mein bhi subjects daalo
+            populateUploadSubjects(subjects); 
         }
     } catch (error) {
         console.error('Error loading subjects:', error);
@@ -650,9 +668,28 @@ async function loadSubjects() {
 
 function populateSubjectFilter(subjects) {
     const subjectSelect = document.getElementById('subjectFilter');
-    if (!subjectSelect) return;
-    
     subjectSelect.innerHTML = '<option value="">All Subjects</option>' +
+        subjects.map(subject =>
+            `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
+        ).join('');
+}
+
+// NAYA FIX: Upload form ke subject dropdown ko bharne ke liye
+function populateUploadSubjects(subjects = null) {
+    const uploadSelect = document.getElementById('uploadSubject');
+    if (!uploadSelect) return;
+
+    // Agar subjects pehle se nahi hain, toh fetch karo
+    if (!subjects) {
+        // Simple optimization: Agar filter mein hain, toh wahi use karo
+        const filterSelect = document.getElementById('subjectFilter');
+        if (filterSelect && filterSelect.options.length > 1) {
+            uploadSelect.innerHTML = filterSelect.innerHTML.replace('<option value="">All Subjects</option>', '<option value="">Select a subject...</option>');
+        }
+        return;
+    }
+    
+    uploadSelect.innerHTML = '<option value="">Select a subject...</option>' +
         subjects.map(subject =>
             `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
         ).join('');
@@ -660,7 +697,19 @@ function populateSubjectFilter(subjects) {
 
 // ===== SEARCH AND FILTER =====
 function searchResources() {
-    // Is function ki ab zaroorat nahi
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    if (searchTerm === '') {
+        displayResources(currentResources);
+        return;
+    }
+
+    const filteredResources = currentResources.filter(resource =>
+        resource.title.toLowerCase().includes(searchTerm) ||
+        (resource.subject && resource.subject.name.toLowerCase().includes(searchTerm))
+    );
+
+    displayResources(filteredResources);
 }
 
 function clearFilters() {
@@ -669,6 +718,7 @@ function clearFilters() {
     document.getElementById('yearFilter').value = '';
     document.getElementById('semesterFilter').value = '';
     document.getElementById('searchInput').value = '';
+
     loadResources();
 }
 
@@ -685,91 +735,27 @@ async function downloadResource(resourceId, pdfUrl) {
         return;
     }
     
+    // Naya tab mein kholein
+    window.open(pdfUrl, '_blank');
+    
+    // NAYA FIX: Download ko history mein record karo
     try {
-        await fetch(`${API_BASE}/resources/files/${resourceId}/download/`, {
+        await fetch(`${API_BASE}/resources/history/record/`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ resource_id: resourceId })
         });
     } catch (error) {
-        console.error('Error logging download:', error);
+        console.error('Failed to record download history:', error);
     }
-    
-    window.open(pdfUrl, '_blank');
 }
 
 function previewResource(pdfUrl) {
     window.open(pdfUrl, '_blank');
 }
-
-async function loadHistory() {
-    const body = document.getElementById('historyModalBody');
-    body.innerHTML = `
-        <div class="loading-state">
-            <div class="loading-spinner"></div>
-            <p>Loading history...</p>
-        </div>
-    `;
-
-    try {
-        const response = await fetch(`${API_BASE}/resources/history/`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch history');
-        }
-        
-        const historyItems = await response.json();
-        
-        if (historyItems.length === 0) {
-            body.innerHTML = `
-                <div class="no-resources" style="text-align: center; padding: 2rem; color: var(--text-gray);">
-                    <i class="fas fa-history" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <h3>No Download History</h3>
-                    <p>You haven't downloaded any resources yet.</p>
-                </div>
-            `;
-            return;
-        }
-
-        body.innerHTML = historyItems.map(item => {
-            const resource = item.resource;
-            const downloadTime = new Date(item.downloaded_at).toLocaleString();
-            
-            return `
-            <div class="history-item">
-                <div class="history-item-icon">
-                    <i class="${getTypeIcon(resource.resource_type)}"></i>
-                </div>
-                <div class="history-item-details">
-                    <h4>${escapeHtml(resource.title)}</h4>
-                    <p>${escapeHtml(resource.subject.name)} | Downloaded on: ${downloadTime}</p>
-                </div>
-                <div class="history-item-action">
-                    <button class="btn-secondary" style="padding: 0.5rem 1rem;" onclick="downloadResource(${resource.id}, '${resource.pdf_file}')">
-                        <i class="fas fa-redo"></i> Download Again
-                    </button>
-                </div>
-            </div>
-            `;
-        }).join('');
-        
-    } catch (error) {
-        console.error('Error loading history:', error);
-        body.innerHTML = `
-            <div class="error-state" style="text-align: center; padding: 2rem; color: var(--error);">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Failed to load your history. Please try again.</p>
-            </div>
-        `;
-    }
-}
-
 
 // ===== NAVIGATION AND UI =====
 function setupSmoothScroll() {
@@ -778,18 +764,26 @@ function setupSmoothScroll() {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
             if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
             }
         });
     });
 }
 
 function scrollToResources() {
-    document.getElementById('resources').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('resources').scrollIntoView({
+        behavior: 'smooth'
+    });
 }
 
 function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
 }
 
 function initScrollToTop() {
@@ -805,6 +799,7 @@ function initScrollToTop() {
     };
 }
 
+// Mobile menu functionality
 function toggleMobileMenu() {
     const navMenu = document.getElementById('navMenu');
     navMenu.classList.toggle('active');
@@ -824,13 +819,20 @@ function debounce(func, wait) {
 }
 
 function escapeHtml(unsafe) {
-    if (typeof unsafe !== 'string') return '';
-    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    if (typeof unsafe !== 'string') {
+        return '';
+    }
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function showLoading(containerId) {
     const container = document.getElementById(containerId);
-    if (!container) return;
+    if (!container) return; 
     container.innerHTML = `
         <div class="loading-state">
             <div class="loading-spinner"></div>
@@ -841,7 +843,7 @@ function showLoading(containerId) {
 
 function showError(containerId, message) {
     const container = document.getElementById(containerId);
-    if (!container) return;
+    if (!container) return; 
     container.innerHTML = `
         <div class="error-state">
             <i class="fas fa-exclamation-triangle"></i>
@@ -869,6 +871,7 @@ function showNotification(message, type = 'info') {
     `;
 
     document.body.appendChild(notification);
+
     setTimeout(() => {
         if (notification.parentElement) {
             notification.remove();
@@ -877,107 +880,179 @@ function showNotification(message, type = 'info') {
 }
 
 function getNotificationIcon(type) {
-    const icons = {'success': 'fa-check-circle', 'error': 'fa-exclamation-circle', 'warning': 'fa-exclamation-triangle', 'info': 'fa-info-circle'};
+    const icons = {
+        'success': 'fa-check-circle',
+        'error': 'fa-exclamation-circle',
+        'warning': 'fa-exclamation-triangle',
+        'info': 'fa-info-circle'
+    };
     return icons[type] || 'fa-info-circle';
 }
 
-// ===== CONTACT FORM =====
-const contactForm = document.querySelector('.contact-form');
-if (contactForm) {
-    contactForm.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<div class="loading"></div> Sending...';
-        submitBtn.disabled = true;
+// ===== CONTACT FORM (NAYA FIX) =====
+async function handleContactForm(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<div class="loading"></div> Sending...';
+    submitBtn.disabled = true;
 
-        const formData = {
-            name: this.querySelector('input[placeholder="Your Name"]').value,
-            email: this.querySelector('input[placeholder="Your Email"]').value,
-            subject: this.querySelector('input[placeholder="Subject"]').value,
-            message: this.querySelector('textarea[placeholder="Your Message"]').value
-        };
+    const formData = {
+        name: document.getElementById('contactName').value,
+        email: document.getElementById('contactEmail').value,
+        subject: document.getElementById('contactSubject').value,
+        message: document.getElementById('contactMessage').value,
+    };
 
-        try {
-            const response = await fetch(`${API_BASE}/auth/contact/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            });
+    try {
+        const response = await fetch(`${API_BASE}/auth/contact/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (response.ok) {
-                showNotification(data.message, 'success');
-                this.reset();
-            } else {
-                showNotification(data.error || 'Failed to send message.', 'error');
-            }
-        } catch (error) {
-            console.error('Contact form error:', error);
-            showNotification('An error occurred. Please try again.', 'error');
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
+        if (response.ok) {
+            showNotification(data.message || 'Message sent successfully!', 'success');
+            form.reset();
+        } else {
+            showNotification(data.error || 'Failed to send message.', 'error');
         }
-    });
+    } catch (error) {
+        console.error('Contact form error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
 }
+
 
 // ===== DYNAMICALLY INJECTED STYLES =====
 const additionalStyles = `
-    .loading-state, .error-state, .no-resources { grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-gray); }
-    .loading-spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary-blue); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
-    .notification { position: fixed; top: 100px; right: 20px; background: white; padding: 1rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border-left: 4px solid var(--primary-blue); z-index: 10000; max-width: 400px; animation: slideInRight 0.3s ease; }
+    .loading-state, .error-state, .no-resources {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-gray);
+    }
+    
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--primary-blue); /* Changed */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+    
+    .notification {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: white;
+        padding: 1rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        border-left: 4px solid var(--primary-blue);
+        z-index: 10000;
+        max-width: 400px;
+        animation: slideInRight 0.3s ease;
+    }
+    
     .notification-success { border-left-color: var(--success); }
     .notification-error { border-left-color: var(--error); }
     .notification-warning { border-left-color: var(--warning); }
     .notification-info { border-left-color: var(--info); }
-    .notification-content { display: flex; align-items: center; gap: 0.75rem; }
-    .notification-content i { font-size: 1.25rem; }
+    
+    .notification-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .notification-content i {
+        font-size: 1.25rem;
+    }
     .notification-success i { color: var(--success); }
     .notification-error i { color: var(--error); }
     .notification-warning i { color: var(--warning); }
     .notification-info i { color: var(--info); }
-    .notification-close { background: none; border: none; color: var(--text-light); cursor: pointer; padding: 0.25rem; margin-left: auto; }
-    @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
-    .resource-card .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
-    .scroll-to-top { 
-        position: fixed; 
-        bottom: 30px; 
-        right: 100px; 
-        width: 50px; 
-        height: 50px; 
-        background: var(--gradient-primary); 
-        color: white; 
-        border: none; 
-        border-radius: 50%; 
-        display: none; 
-        align-items: center; 
-        justify-content: center; 
-        font-size: 1.25rem; 
-        cursor: pointer; 
-        box-shadow: var(--shadow-lg); 
-        z-index: 999; 
-        transition: all 0.3s ease; 
+
+    .notification-close {
+        background: none;
+        border: none;
+        color: var(--text-light);
+        cursor: pointer;
+        padding: 0.25rem;
+        margin-left: auto;
     }
-    .scroll-to-top:hover { transform: translateY(-5px); }
     
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .resource-card .download-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .scroll-to-top {
+        position: fixed;
+        bottom: 30px;
+        left: 30px; /* <-- YAHAN FIX KAR DIYA HAI (right se left) */
+        width: 50px;
+        height: 50px;
+        background: var(--gradient-primary);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        display: none; /* Hidden by default */
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        cursor: pointer;
+        box-shadow: var(--shadow-lg);
+        z-index: 999;
+        transition: all 0.3s ease;
+    }
+    .scroll-to-top:hover {
+        transform: translateY(-5px);
+    }
+
     @media (max-width: 768px) {
-        .notification { top: 80px; left: 20px; right: 20px; max-width: none; }
-        .scroll-to-top { 
-            width: 40px; 
-            height: 40px; 
-            font-size: 1rem; 
-            bottom: 20px; 
-            right: 80px;
+        .notification {
+            top: 80px;
+            left: 20px;
+            right: 20px;
+            max-width: none;
+        }
+        .scroll-to-top {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+            bottom: 20px;
+            left: 20px; /* Mobile par bhi left kar diya */
         }
     }
 `;
+
+// Inject additional styles
 const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);

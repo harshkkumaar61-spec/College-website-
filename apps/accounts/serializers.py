@@ -80,10 +80,9 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         return data
 
-# --- YEH NAYA SERIALIZER ADD KARO (Contact Form ke liye) ---
+# --- Contact Form ke liye ---
 class ContactFormSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
     email = serializers.EmailField()
     subject = serializers.CharField(max_length=200)
     message = serializers.CharField()
-# --- YAHAN TAK ---
