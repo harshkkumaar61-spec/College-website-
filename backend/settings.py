@@ -5,8 +5,11 @@ import sys
 from pathlib import Path
 from datetime import timedelta
 
-# BASE_DIR ko aapke structure ke hisaab se set kiya hai
+# --- YEH LINE FIX KAR DI GAYI HAI ---
+# settings.py 'backend/' folder ke andar hai
+# 'parent' hai root 'AI STUDY HUB'
 BASE_DIR = Path(__file__).resolve().parent.parent 
+# --- YAHAN TAK ---
 
 # 'apps' folder ko Python ke search path mein add kar rahe hain
 sys.path.append(str(BASE_DIR / 'apps'))
@@ -42,7 +45,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Yeh CommonMiddleware se upar hona chahiye
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware', 
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -98,25 +101,19 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# --- Custom User Model ---
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-# --- YEH SECTION FIX KIYA GAYA HAI ---
 CORS_ALLOWED_ORIGINS = [
-    "https://ai-study-hub-delta.vercel.app", # <-- AAPKA VERCEL URL
+    "https://ai-study-hub-delta.vercel.app",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
     "null",
 ]
 CSRF_TRUSTED_ORIGINS = [
-    "https://ungregariously-unbangled-braxton.ngrok-free.dev", # <-- AAPKA NGROK URL
+    "https://ungregariously-unbangled-braxton.ngrok-free.dev",
     "https://*.ngrok-free.app"
 ]
-# --- YAHAN TAK ---
 
-
-# --- REST Framework aur Simple JWT ki settings ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -128,16 +125,16 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
-# --- Media Files (Uploaded Images) Settings ---
+# --- YEH SECTION FIX KAR DIYA GAYA HAI ---
 MEDIA_URL = '/media/'
-# FINAL FIX: MEDIA_ROOT ko root-level 'media' folder mein point kiya
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = BASE_DIR / 'media' # 'media' folder root mein banega
+# --- YAHAN TAK ---
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'hk015609@gmail.com' # <-- YAHAN APNA GMAIL EMAIL DAALO
-EMAIL_HOST_PASSWORD = 'wgdy tejb ovdz nwix' # <-- YAHAN APNA 16-DIGIT APP PASSWORD DAALO
+EMAIL_HOST_USER = 'hk015609@gmail.com'
+EMAIL_HOST_PASSWORD = 'wgdy tejb ovdz nwix'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

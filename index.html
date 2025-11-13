@@ -28,13 +28,7 @@
             </div>
 
             <div class="nav-auth">
-                <button class="btn-login" onclick="openLoginModal()">
-                    <i class="fas fa-sign-in-alt"></i> Login
-                </button>
-                <button class="btn-register" onclick="openRegisterModal()">
-                    <i class="fas fa-user-plus"></i> Register
-                </button>
-            </div>
+                </div>
 
             <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
                 <i class="fas fa-bars"></i>
@@ -144,8 +138,7 @@
                 <div class="search-box">
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchInput" placeholder="Search resources by title or subject...">
-                    <button class="btn-search" onclick="loadResources()">Search</button>
-                </div>
+                    <button class="btn-search">Search</button> </div>
 
                 <div class="filter-section">
                     <select id="subjectFilter" class="filter-select">
@@ -173,6 +166,10 @@
                         <option value="2">Semester 2</option>
                         <option value="3">Semester 3</option>
                         <option value="4">Semester 4</option>
+                        <option value="5">Semester 5</option>
+                        <option value="6">Semester 6</option>
+                        <option value="7">Semester 7</option>
+                        <option value="8">Semester 8</option>
                     </select>
 
                     <button class="btn-primary" onclick="loadResources()">
@@ -203,12 +200,12 @@
             <div class="subjects-grid">
                 <div class="subject-card">
                     <div class="subject-icon">
-                        <i class="fas fa-calculator"></i> </div>
+                        <i class="fas fa-calculator"></i>
+                    </div>
                     <h3>Mathematics</h3>
                     <p>Calculus, Algebra, Statistics, Discrete Mathematics</p>
                     <span class="resource-count">150+ Resources</span>
                 </div>
-
                 <div class="subject-card">
                     <div class="subject-icon">
                         <i class="fas fa-atom"></i>
@@ -217,16 +214,6 @@
                     <p>Mechanics, Electromagnetism, Thermodynamics, Optics</p>
                     <span class="resource-count">120+ Resources</span>
                 </div>
-
-                <div class="subject-card">
-                    <div class="subject-icon">
-                        <i class="fas fa-flask"></i>
-                    </div>
-                    <h3>Chemistry</h3>
-                    <p>Organic, Inorganic, Physical Chemistry, Biochemistry</p>
-                    <span class="resource-count">100+ Resources</span>
-                </div>
-
                 <div class="subject-card">
                     <div class="subject-icon">
                         <i class="fas fa-laptop-code"></i>
@@ -243,7 +230,7 @@
         <div class="container">
             <div class="about-content">
                 <div class="about-text">
-                    <h2 class="section-title">About CollegeResources</h2>
+                    <h2 class="section-title" style="text-align: left;">About CollegeResources</h2>
                     <p>
                         CollegeResources is a platform dedicated to helping college students succeed in their academic
                         journey.
@@ -450,7 +437,6 @@
                     <select id="regRole">
                         <option value="student">Student</option>
                         <option value="teacher">Teacher</option>
-                        <option value="admin">Administrator</option>
                     </select>
                 </div>
                 <div class="form-options">
@@ -535,7 +521,7 @@
                     <div class="form-group">
                         <label for="profileLastName">Last Name</label>
                         <input type="text" id="profileLastName" placeholder="Your last name">
-                    </select>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -563,11 +549,7 @@
             </div>
             
             <div class="modal-body" id="historyModalBody">
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading history...</p>
                 </div>
-            </div>
         </div>
     </div>
 
