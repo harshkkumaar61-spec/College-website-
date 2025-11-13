@@ -1,23 +1,33 @@
-// ===== GLOBAL VARIABLES =====
-const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api'; // <-- YEH NGROK URL HAI
-let currentUser = null;
-let authToken = localStorage.getItem('authToken'); // Token ko load kiya
-let currentResources = [];
+// ===== 🚀 CollegeResources MAIN SCRIPT 🚀 =====
 
-// ===== 🚀 NAYA TOKEN REFRESH LOGIC 🚀 =====
+// ===== 1. GLOBAL VARIABLES =====
 
 /**
- * Yeh function naya Access Token laane ki koshish karta hai.
+ * Backend API ka base URL.
+ * !! IMPORTANT: Ise apne live Render backend URL se badalna !!
+ * (e.g., 'https://your-backend-app.onrender.com/api')
+ */
+const API_BASE = 'https://your-backend-app.onrender.com/api';
+
+let currentUser = null;
+let authToken = localStorage.getItem('authToken');
+let allSubjects = []; // Subjects ko cache karne ke liye
+
+// ===== 2. AUTHENTICATION (Token Refresh Wrapper) =====
+
+/**
+ * Naya Access Token laane ki koshish karta hai.
  */
 async function refreshToken() {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) {
-        console.log('No refresh token available. Logging out.');
+        console.log('No refresh token. Logging out.');
         logout();
         return false;
     }
 
     try {
+        // Is request mein auth header nahi chahiye
         const response = await fetch(`${API_BASE}/auth/token/refresh/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -26,13 +36,12 @@ async function refreshToken() {
 
         if (response.ok) {
             const data = await response.json();
-            localStorage.setItem('authToken', data.access); // Naya token save kiya
-            authToken = data.access; // Global variable update kiya
+            localStorage.setItem('authToken', data.access);
+            authToken = data.access;
             console.log('Token refreshed successfully.');
             return true;
         } else {
-            // Agar refresh token bhi expire ho gaya hai, toh logout
-            console.log('Refresh token expired or invalid. Logging out.');
+            console.log('Refresh token expired. Logging out.');
             logout();
             return false;
         }
@@ -73,54 +82,45 @@ async function fetchWithAuth(url, options = {}) {
             options.headers['Authorization'] = `Bearer ${authToken}`; // Naya token
             console.log('Retrying request with new token...');
             response = await fetch(url, options); // Retry
-        } else {
-            // 6. Agar refresh fail hua, toh logout() pehle hi ho chuka hai
-            return response; // Original fail response bhej do
         }
     }
 
     return response;
 }
-// ===== 🚀 REFRESH LOGIC END 🚀 =====
 
+// ===== 3. INITIALIZATION =====
 
-// ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', function () {
     initializeApp();
 });
 
 async function initializeApp() {
-    // Email verification check
+    // === FIX: Email verification logic update ki gayi ===
     const params = new URLSearchParams(window.location.search);
+    const uid = params.get('verify_uid');
     const token = params.get('verify_token');
     
-    if (token) {
-        await verifyEmailToken(token);
+    if (uid && token) {
+        await verifyEmailToken(uid, token);
         // Clean URL (token hata do)
         window.history.replaceState({}, document.title, window.location.pathname);
     }
+    // === END FIX ===
 
-    // Check authentication status (Refresh Fix)
-    // Ab yeh logic aur bhi behtar kaam karega 'fetchWithAuth' ke saath
+    // Check authentication status
     if (authToken) {
-        // Agar token hai, toh profile fetch karne ki koshish karo
         await fetchUserProfile(); 
     } else {
-        // Agar token nahi hai, toh logged-out UI dikhao
         updateNavForLoggedInUser();
     }
 
     // Load initial data
-    loadResources(); // <-- Ab yeh API se data layega
-    loadSubjects();  // <-- Ab yeh API se data layega
+    await loadSubjects(); // Yeh subjects load karega
+    await loadResources(); // Yeh resources load karega
 
     // Setup event listeners
     setupEventListeners();
-
-    // Initialize scroll to top button
     initScrollToTop();
-    
-    // Naye dropdown ke liye listener setup karein
     setupDropdownListener();
 }
 
@@ -129,12 +129,14 @@ function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.querySelector('.btn-search');
     
-    searchInput.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); 
-            loadResources();
-        }
-    });
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                loadResources();
+            }
+        });
+    }
     if (searchButton) {
         searchButton.addEventListener('click', function(e) {
             e.preventDefault();
@@ -143,10 +145,10 @@ function setupEventListeners() {
     }
 
     // Filters
-    document.getElementById('subjectFilter').addEventListener('change', loadResources);
-    document.getElementById('typeFilter').addEventListener('change', loadResources);
-    document.getElementById('yearFilter').addEventListener('change', loadResources);
-    document.getElementById('semesterFilter').addEventListener('change', loadResources);
+    document.getElementById('subjectFilter')?.addEventListener('change', loadResources);
+    document.getElementById('typeFilter')?.addEventListener('change', loadResources);
+    document.getElementById('yearFilter')?.addEventListener('change', loadResources);
+    document.getElementById('semesterFilter')?.addEventListener('change', loadResources);
 
     // Modals
     setupModalEvents();
@@ -161,21 +163,24 @@ function setupEventListeners() {
     }
 }
 
-// ===== AUTHENTICATION FUNCTIONS =====
-async function verifyEmailToken(token) {
+// ===== 4. AUTHENTICATION FUNCTIONS =====
+
+/**
+ * === FIX: Email verification ke liye backend ko uid aur token bhejta hai ===
+ */
+async function verifyEmailToken(uid, token) {
     try {
-        // Is request mein token nahi chahiye, toh normal fetch use karenge
         const response = await fetch(`${API_BASE}/auth/verify/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ token: token })
+            body: JSON.stringify({ uidb64: uid, token: token }) // Backend ke hisaab se
         });
         const data = await response.json();
         if (response.ok) {
-            showNotification(data.message, 'success');
-            openLoginModal(); // Success par login modal kholo
+            showNotification(data.message || 'Email verified successfully! Please login.', 'success');
+            openLoginModal();
         } else {
-            showNotification(data.error || 'Verification failed.', 'error');
+            showNotification(data.error || 'Verification failed. The link might be expired.', 'error');
         }
     } catch (error) {
         console.error('Verification error:', error);
@@ -183,29 +188,20 @@ async function verifyEmailToken(token) {
     }
 }
 
-
 async function fetchUserProfile() {
-    // YEH FUNCTION AB PAGE REFRESH PAR LOGIN FIX KAREGA
     if (!authToken) {
         updateNavForLoggedInUser();
         return;
     }
     try {
-        // === FIX ===
-        // Ab 'fetchWithAuth' use karenge
         const response = await fetchWithAuth(`${API_BASE}/auth/profile/`);
-        // === END FIX ===
-
         if (response.ok) {
             currentUser = await response.json();
             updateNavForLoggedInUser();
         } else {
-            console.error('Token invalid, logging out.');
-            // Agar token invalid/expired hai, toh fetchWithAuth 
-            // ne pehle hi refreshToken() call kiya hoga.
-            // Agar woh bhi fail hua, toh logout() ho chuka hoga.
-            // Hum yahaan ek baar aur call kar lete hain, safe side ke liye.
-            logout();
+            // fetchWithAuth ne logout handle kar liya hoga agar refresh fail hua
+            console.error('Could not fetch profile.');
+            logout(); // Failsafe
         }
     } catch (error) {
         console.error('Error fetching profile:', error);
@@ -216,16 +212,16 @@ async function fetchUserProfile() {
 function updateNavForLoggedInUser() {
     const navAuth = document.querySelector('.nav-auth');
     if (currentUser && navAuth) {
+        // Profile Pic/Initial Logic
         const profilePicUrl = currentUser.profile_pic;
         let profileElement = '';
         if (profilePicUrl) {
-            // Cache-busting parameter add kiya taaki nayi pic load ho
-            profileElement = `<img src="${profilePicUrl}?v=${new Date().getTime()}" alt="Profile Picture" class="nav-profile-pic">`;
+            profileElement = `<img src="${profilePicUrl}?v=${new Date().getTime()}" alt="Profile" class="nav-profile-pic">`;
         } else {
-            const firstName = currentUser.first_name || 'User';
-            const initial = firstName.charAt(0).toUpperCase();
+            const initial = (currentUser.first_name || 'U').charAt(0).toUpperCase();
             profileElement = `<div class="nav-profile-initial">${initial}</div>`;
         }
+        
         navAuth.innerHTML = `
             <button class="btn-primary" onclick="openUploadModal()">
                 <i class="fas fa-upload"></i> Upload Resource
@@ -277,12 +273,13 @@ function logout(event) {
     showNotification('You have been logged out.', 'info');
 }
 
-// ===== MODAL FUNCTIONS =====
+// ===== 5. MODAL FUNCTIONS =====
+
 function setupModalEvents() {
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('uploadForm').addEventListener('submit', handleUpload);
-    document.getElementById('profileForm').addEventListener('submit', handleProfileUpdate);
+    document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
+    document.getElementById('registerForm')?.addEventListener('submit', handleRegister);
+    document.getElementById('uploadForm')?.addEventListener('submit', handleUpload);
+    document.getElementById('profileForm')?.addEventListener('submit', handleProfileUpdate);
 
     window.addEventListener('click', function (event) {
         const modals = document.querySelectorAll('.modal');
@@ -313,13 +310,14 @@ function closeRegisterModal() {
     document.body.style.overflow = 'auto';
 }
 
-async function openUploadModal() {
+function openUploadModal() {
     if (!authToken) {
         showNotification('Please login to upload resources', 'warning');
         openLoginModal();
         return;
     }
-    await populateUploadFormSubjects(); 
+    // === FIX: Cached subjects ko use karo ===
+    populateUploadFormSubjects(allSubjects); 
     document.getElementById('uploadModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
@@ -348,7 +346,7 @@ function closeProfileModal() {
     document.body.style.overflow = 'auto';
 }
 
-function openHistoryModal(event) {
+async function openHistoryModal(event) {
     if(event) event.preventDefault();
     
     const dropdown = document.getElementById('profileDropdown');
@@ -357,7 +355,7 @@ function openHistoryModal(event) {
     document.getElementById('historyModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
     
-    loadHistory();
+    await loadHistory();
 }
 
 function closeHistoryModal() {
@@ -374,7 +372,7 @@ function switchToLogin() {
     openLoginModal();
 }
 
-// ===== NAYE DROPDOWN FUNCTIONS =====
+// Profile Dropdown
 function toggleProfileDropdown(event) {
     event.stopPropagation();
     document.getElementById('profileDropdown').classList.toggle('active');
@@ -391,7 +389,8 @@ function setupDropdownListener() {
     });
 }
 
-// ===== FORM HANDLERS =====
+// ===== 6. FORM HANDLERS =====
+
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
@@ -402,7 +401,6 @@ async function handleLogin(e) {
     submitBtn.disabled = true;
 
     try {
-        // Login request ko token nahi chahiye
         const response = await fetch(`${API_BASE}/auth/login/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -417,7 +415,7 @@ async function handleLogin(e) {
             updateNavForLoggedInUser();
             closeLoginModal();
             showNotification('Login successful! Welcome back.', 'success');
-            loadResources();
+            await loadResources(); // Refresh resources
         } else {
             const errorMsg = data.detail || 'Login failed. Please check your credentials.';
             showNotification(errorMsg, 'error');
@@ -433,20 +431,24 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
     e.preventDefault();
+    
+    // === FIX: 'college' field add ki gayi ===
     const formData = {
         first_name: document.getElementById('regFirstName').value,
         last_name: document.getElementById('regLastName').value,
         email: document.getElementById('regEmail').value,
         password: document.getElementById('regPassword').value,
-        role: document.getElementById('regRole').value
+        role: document.getElementById('regRole').value,
+        college: document.getElementById('regCollege').value // <-- YEH ADD KIYA GAYA
     };
+    // === END FIX ===
+    
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<div class="loading"></div> Creating account...';
     submitBtn.disabled = true;
 
     try {
-        // Register request ko token nahi chahiye
         const response = await fetch(`${API_BASE}/auth/register/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -458,10 +460,11 @@ async function handleRegister(e) {
             closeRegisterModal();
             e.target.reset();
         } else {
-            const errorMsg = data.email ? data.email[0] :
-                data.password ? data.password[0] :
-                data.error ? data.error :
-                'Registration failed. Please try again.';
+            // Error handling
+            let errorMsg = 'Registration failed. Please try again.';
+            if (data.email) errorMsg = data.email[0];
+            else if (data.password) errorMsg = data.password[0];
+            else if (data.error) errorMsg = data.error;
             showNotification(errorMsg, 'error');
         }
     } catch (error) {
@@ -470,32 +473,6 @@ async function handleRegister(e) {
     } finally {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
-    }
-}
-
-
-async function populateUploadFormSubjects() {
-    const select = document.getElementById('uploadSubject');
-    select.innerHTML = '<option value="">Loading subjects...</option>';
-    try {
-        // Yeh request public hai (AllowAny), toh normal fetch theek hai
-        const response = await fetch(`${API_BASE}/resources/subjects/`);
-        if (!response.ok) throw new Error('Failed to fetch subjects');
-        
-        const subjects = await response.json();
-        
-        if(subjects.length === 0) {
-            select.innerHTML = '<option value="">No subjects found. Please add one in admin.</option>';
-            return;
-        }
-
-        select.innerHTML = '<option value="">Select a subject...</option>';
-        select.innerHTML += subjects.map(subject => 
-            `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
-        ).join('');
-    } catch (error) {
-        console.error('Error loading subjects for upload:', error);
-        select.innerHTML = '<option value="">Could not load subjects</option>';
     }
 }
 
@@ -512,18 +489,13 @@ async function handleUpload(e) {
     const originalText = submitBtn.innerHTML;
 
     // Validation
-    if (!file) {
-        errorDiv.textContent = 'Please select a PDF file.';
+    if (!file || !subjectId || !title) {
+        errorDiv.textContent = 'Please fill in all fields and select a file.';
         errorDiv.style.display = 'block';
         return;
     }
     if (file.type !== 'application/pdf') {
         errorDiv.textContent = 'Only PDF files are allowed.';
-        errorDiv.style.display = 'block';
-        return;
-    }
-     if (!subjectId) {
-        errorDiv.textContent = 'Please select a subject.';
         errorDiv.style.display = 'block';
         return;
     }
@@ -539,19 +511,17 @@ async function handleUpload(e) {
     formData.append('pdf_file', file);
 
     try {
-        // === FIX ===
-        // 'fetchWithAuth' use karenge.
-        // Yeh FormData ke saath kaam karega (Content-Type set nahi karega).
+        // fetchWithAuth FormData ke liye header set nahi karega (jo sahi hai)
         const response = await fetchWithAuth(`${API_BASE}/resources/files/`, {
             method: 'POST',
             body: formData
         });
-        // === END FIX ===
 
         if (response.status === 201) { // 201 Created
             showNotification('Resource uploaded! It will be visible after admin approval.', 'success');
             closeUploadModal();
             e.target.reset();
+            await loadResources(); // Refresh list
         } else {
             const data = await response.json();
             let errorMsg = 'Upload failed. Please try again.';
@@ -564,7 +534,7 @@ async function handleUpload(e) {
         }
     } catch (error) {
         console.error('Upload error:', error);
-        errorDiv.textContent = 'An error occurred. Please check your connection and try again.';
+        errorDiv.textContent = 'An error occurred. Please check your connection.';
         errorDiv.style.display = 'block';
     } finally {
         submitBtn.innerHTML = originalText;
@@ -602,13 +572,10 @@ async function handleProfileUpdate(e) {
     }
 
     try {
-        // === FIX ===
-        // 'fetchWithAuth' use karenge
         const response = await fetchWithAuth(`${API_BASE}/auth/profile/update/`, {
             method: 'PATCH',
             body: formData
         });
-        // === END FIX ===
 
         if (response.ok) {
             const updatedUser = await response.json();
@@ -632,8 +599,8 @@ async function handleProfileUpdate(e) {
     }
 }
 
+// ===== 7. RESOURCE MANAGEMENT =====
 
-// ===== RESOURCE MANAGEMENT (API se connected) =====
 async function loadResources() {
     const subjectFilter = document.getElementById('subjectFilter').value;
     const typeFilter = document.getElementById('typeFilter').value;
@@ -643,25 +610,18 @@ async function loadResources() {
     showLoading('resourcesGrid');
 
     try {
-        let url = `${API_BASE}/resources/files/`;
         const params = new URLSearchParams();
-
         if (subjectFilter) params.append('subject', subjectFilter);
         if (typeFilter) params.append('type', typeFilter);
         if (semesterFilter) params.append('semester', semesterFilter);
         if (searchInput) params.append('search', searchInput); 
 
-        if (params.toString()) {
-            url += `?${params.toString()}`;
-        }
-
-        // Yeh request public hai (AllowAny), toh normal fetch theek hai
-        const response = await fetch(url);
+        // Public endpoint, normal fetch is fine
+        const response = await fetch(`${API_BASE}/resources/files/?${params.toString()}`);
         if (!response.ok) {
             throw new Error('Failed to fetch resources');
         }
         const resources = await response.json();
-        currentResources = resources;
         displayResources(resources);
 
     } catch (error) {
@@ -670,16 +630,16 @@ async function loadResources() {
     }
 }
 
-
 function displayResources(resources) {
     const grid = document.getElementById('resourcesGrid');
+    if (!grid) return;
 
     if (resources.length === 0) {
         grid.innerHTML = `
             <div class="no-resources">
                 <i class="fas fa-inbox"></i>
                 <h3>No Resources Found</h3>
-                <p>Try adjusting your filters or search terms. (Ya admin panel se kuch upload karo)</p>
+                <p>Try adjusting your filters or search terms.</p>
                 <button class="btn-primary" onclick="clearFilters()">Clear All Filters</button>
             </div>
         `;
@@ -687,7 +647,7 @@ function displayResources(resources) {
     }
 
     grid.innerHTML = resources.map(resource => {
-        const subjectName = resource.subject ? resource.subject.name : 'Unknown Subject';
+        const subjectName = resource.subject ? resource.subject.name : 'Unknown';
         const year = new Date(resource.uploaded_at).getFullYear();
         const uploaderName = resource.uploaded_by || 'Admin';
 
@@ -745,24 +705,28 @@ function getTypeDisplayName(type) {
 
 function getResourceDescription(resource) {
     const subjectName = resource.subject ? resource.subject.name : 'this subject';
-    const baseDescription = `Download this ${getTypeDisplayName(resource.resource_type).toLowerCase()} for ${subjectName}`;
-    return `${baseDescription}.`;
+    return `Download this ${getTypeDisplayName(resource.resource_type).toLowerCase()} for ${subjectName}.`;
 }
 
+/**
+ * === FIX: Ab yeh function subjects ko load aur cache karta hai ===
+ */
 async function loadSubjects() {
     try {
-        // Yeh public hai, normal fetch
         const response = await fetch(`${API_BASE}/resources/subjects/`);
         if (response.ok) {
-            const subjects = await response.json();
-            populateSubjectFilter(subjects);
-            populateUploadFormSubjects(subjects); // NAYA: Upload form ko bhi bharo
+            allSubjects = await response.json(); // Cache mein save kiya
+            populateSubjectFilter(allSubjects); // Filter dropdown bhara
+            // Upload form dropdown ab `openUploadModal` mein bharega
         }
     } catch (error) {
         console.error('Error loading subjects:', error);
     }
 }
 
+/**
+ * === FIX: Ab yeh 'subjects' argument leta hai ===
+ */
 function populateSubjectFilter(subjects) {
     const subjectSelect = document.getElementById('subjectFilter');
     if (!subjectSelect) return;
@@ -773,7 +737,9 @@ function populateSubjectFilter(subjects) {
         ).join('');
 }
 
-// Upload form ke subject dropdown ko bharne ke liye
+/**
+ * === FIX: Ab yeh 'subjects' argument leta hai ===
+ */
 function populateUploadFormSubjects(subjects) {
     const select = document.getElementById('uploadSubject');
     if (!select) return;
@@ -784,19 +750,10 @@ function populateUploadFormSubjects(subjects) {
             `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
         ).join('');
     } else {
-        select.innerHTML = '<option value="">Loading subjects...</option>';
-        // Agar subjects nahi hain, toh dobara fetch karo (fallback)
-        if(!subjects) {
-             loadSubjects();
-        }
+        select.innerHTML = '<option value="">No subjects found</option>';
     }
 }
 
-
-// ===== SEARCH AND FILTER =====
-function searchResources() {
-    // Is function ki ab zaroorat nahi
-}
 
 function clearFilters() {
     document.getElementById('subjectFilter').value = '';
@@ -808,11 +765,11 @@ function clearFilters() {
 }
 
 function loadMoreResources() {
-    showNotification('Loading more resources...', 'info');
+    // Abhi ke liye yeh 'load all' hi hai, pagination nahi hai
+    showNotification('Loading all resources...', 'info');
     loadResources();
 }
 
-// ===== RESOURCE ACTIONS =====
 async function downloadResource(resourceId, pdfUrl) {
     if (!authToken) {
         showNotification('Please login to download resources', 'warning');
@@ -821,19 +778,15 @@ async function downloadResource(resourceId, pdfUrl) {
     }
     
     try {
-        // === FIX ===
-        // 'fetchWithAuth' use karenge
+        // Download ko log karo
         await fetchWithAuth(`${API_BASE}/resources/files/${resourceId}/download/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            method: 'POST'
         });
-        // === END FIX ===
     } catch (error) {
         console.error('Error logging download:', error);
     }
     
+    // File open karo
     window.open(pdfUrl, '_blank');
 }
 
@@ -843,28 +796,17 @@ function previewResource(pdfUrl) {
 
 async function loadHistory() {
     const body = document.getElementById('historyModalBody');
-    body.innerHTML = `
-        <div class="loading-state">
-            <div class="loading-spinner"></div>
-            <p>Loading history...</p>
-        </div>
-    `;
+    body.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div><p>Loading history...</p></div>`;
 
     try {
-        // === FIX ===
-        // 'fetchWithAuth' use karenge
         const response = await fetchWithAuth(`${API_BASE}/resources/history/`);
-        // === END FIX ===
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch history');
-        }
+        if (!response.ok) throw new Error('Failed to fetch history');
         
         const historyItems = await response.json();
         
         if (historyItems.length === 0) {
             body.innerHTML = `
-                <div class="no-resources" style="text-align: center; padding: 2rem; color: var(--text-gray);">
+                <div class="no-resources" style="text-align: center; padding: 2rem;">
                     <i class="fas fa-history" style="font-size: 2rem; margin-bottom: 1rem;"></i>
                     <h3>No Download History</h3>
                     <p>You haven't downloaded any resources yet.</p>
@@ -884,7 +826,7 @@ async function loadHistory() {
                 </div>
                 <div class="history-item-details">
                     <h4>${escapeHtml(resource.title)}</h4>
-                    <p>${escapeHtml(resource.subject.name)} | Downloaded on: ${downloadTime}</p>
+                    <p>${escapeHtml(resource.subject.name)} | Downloaded: ${downloadTime}</p>
                 </div>
                 <div class="history-item-action">
                     <button class="btn-secondary" style="padding: 0.5rem 1rem;" onclick="downloadResource(${resource.id}, '${resource.pdf_file}')">
@@ -898,7 +840,7 @@ async function loadHistory() {
     } catch (error) {
         console.error('Error loading history:', error);
         body.innerHTML = `
-            <div class="error-state" style="text-align: center; padding: 2rem; color: var(--error);">
+            <div class="error-state" style="text-align: center; padding: 2rem;">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Failed to load your history. Please try again.</p>
             </div>
@@ -906,13 +848,55 @@ async function loadHistory() {
     }
 }
 
+// ===== 8. CONTACT FORM =====
 
-// ===== NAVIGATION AND UI =====
+async function handleContactForm(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<div class="loading"></div> Sending...';
+    submitBtn.disabled = true;
+
+    const formData = {
+        name: document.getElementById('contactName').value,
+        email: document.getElementById('contactEmail').value,
+        subject: document.getElementById('contactSubject').value,
+        message: document.getElementById('contactMessage').value,
+    };
+
+    try {
+        // Public endpoint
+        const response = await fetch(`${API_BASE}/auth/contact/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        });
+        const data = await response.json();
+        if (response.ok) {
+            showNotification(data.message || 'Message sent successfully!', 'success');
+            form.reset();
+        } else {
+            showNotification(data.error || 'Failed to send message.', 'error');
+        }
+    } catch (error) {
+        console.error('Contact form error:', error);
+        showNotification('An error occurred. Please try again.', 'error');
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// ===== 9. UTILITY & UI FUNCTIONS =====
+
 function setupSmoothScroll() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
+            const targetId = this.getAttribute('href');
+            const target = document.querySelector(targetId);
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -946,19 +930,6 @@ function toggleMobileMenu() {
     navMenu.classList.toggle('active');
 }
 
-// ===== UTILITY FUNCTIONS =====
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
 function escapeHtml(unsafe) {
     if (typeof unsafe !== 'string') return '';
     return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -989,8 +960,8 @@ function showError(containerId, message) {
 }
 
 function showNotification(message, type = 'info') {
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notification => notification.remove());
+    // Purane notifications hatao
+    document.querySelectorAll('.notification').forEach(n => n.remove());
 
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
@@ -1017,102 +988,55 @@ function getNotificationIcon(type) {
     return icons[type] || 'fa-info-circle';
 }
 
-// ===== CONTACT FORM =====
-async function handleContactForm(e) {
-    e.preventDefault();
-    
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<div class="loading"></div> Sending...';
-    submitBtn.disabled = true;
-
-    const formData = {
-        name: document.getElementById('contactName').value,
-        email: document.getElementById('contactEmail').value,
-        subject: document.getElementById('contactSubject').value,
-        message: document.getElementById('contactMessage').value,
-    };
-
-    try {
-        // Yeh public hai, normal fetch
-        const response = await fetch(`${API_BASE}/auth/contact/`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(formData)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showNotification(data.message || 'Message sent successfully!', 'success');
-            form.reset();
-        } else {
-            showNotification(data.error || 'Failed to send message.', 'error');
-        }
-    } catch (error) {
-        console.error('Contact form error:', error);
-        showNotification('An error occurred. Please try again.', 'error');
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    }
-}
-
-
-// ===== DYNAMICALLY INJECTED STYLES =====
-const additionalStyles = `
-    .loading-state, .error-state, .no-resources { grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-gray); }
-    .loading-spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary-blue); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
-    .notification { position: fixed; top: 100px; right: 20px; background: white; padding: 1rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border-left: 4px solid var(--primary-blue); z-index: 10000; max-width: 400px; animation: slideInRight 0.3s ease; }
-    .notification-success { border-left-color: var(--success); }
-    .notification-error { border-left-color: var(--error); }
-    .notification-warning { border-left-color: var(--warning); }
-    .notification-info { border-left-color: var(--info); }
-    .notification-content { display: flex; align-items: center; gap: 0.75rem; }
-    .notification-content i { font-size: 1.25rem; }
-    .notification-success i { color: var(--success); }
-    .notification-error i { color: var(--error); }
-    .notification-warning i { color: var(--warning); }
-    .notification-info i { color: var(--info); }
-    .notification-close { background: none; border: none; color: var(--text-light); cursor: pointer; padding: 0.25rem; margin-left: auto; }
-    @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
-    .resource-card .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
-    /* --- YEH BUTTON FIX HAI --- */
-    .scroll-to-top { 
-        position: fixed; 
-        bottom: 30px; 
-        right: 100px; /* AI icon (right: 30px) se alag kiya */
-        width: 50px; 
-        height: 50px; 
-        background: var(--gradient-primary); 
-        color: white; 
-        border: none; 
-        border-radius: 50%; 
-        display: none; 
-        align-items: center; 
-        justify-content: center; 
-        font-size: 1.25rem; 
-        cursor: pointer; 
-        box-shadow: var(--shadow-lg); 
-        z-index: 999; 
-        transition: all 0.3s ease; 
-    }
-    .scroll-to-top:hover { transform: translateY(-5px); }
-    
-    @media (max-width: 768px) {
-        .notification { top: 80px; left: 20px; right: 20px; max-width: none; }
+// ===== 10. DYNAMICALLY INJECTED STYLES =====
+// (Yeh styles zaroori hain notifications, loading states, aur dropdowns ke liye)
+(function() {
+    const additionalStyles = `
+        .loading-state, .error-state, .no-resources { grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-gray); }
+        .loading-spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary-blue); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+        .notification { position: fixed; top: 100px; right: 20px; background: white; padding: 1rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border-left: 4px solid var(--primary-blue); z-index: 10000; max-width: 400px; animation: slideInRight 0.3s ease; }
+        .notification-success { border-left-color: var(--success); }
+        .notification-error { border-left-color: var(--error); }
+        .notification-warning { border-left-color: var(--warning); }
+        .notification-info { border-left-color: var(--info); }
+        .notification-content { display: flex; align-items: center; gap: 0.75rem; }
+        .notification-content i { font-size: 1.25rem; }
+        .notification-success i { color: var(--success); }
+        .notification-error i { color: var(--error); }
+        .notification-warning i { color: var(--warning); }
+        .notification-info i { color: var(--info); }
+        .notification-close { background: none; border: none; color: var(--text-light); cursor: pointer; padding: 0.25rem; margin-left: auto; }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        .resource-card .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
         .scroll-to-top { 
-            width: 40px; 
-            height: 40px; 
-            font-size: 1rem; 
-            bottom: 20px; 
-            right: 80px; /* Mobile par bhi AI icon se alag kiya */
+            position: fixed; 
+            bottom: 30px; 
+            right: 100px;
+            width: 50px; 
+            height: 50px; 
+            background: var(--gradient-primary); 
+            color: white; 
+            border: none; 
+            border-radius: 50%; 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.25rem; 
+            cursor: pointer; 
+            box-shadow: var(--shadow-lg); 
+            z-index: 999; 
+            transition: all 0.3s ease; 
         }
-    }
-`;
-const styleSheet = document.createElement('style');
-styleSheet.textContent = additionalStyles;
-document.head.appendChild(styleSheet);
+        .scroll-to-top:hover { transform: translateY(-5px); }
+        
+        @media (max-width: 768px) {
+            .notification { top: 80px; left: 20px; right: 20px; max-width: none; }
+            .scroll-to-top { width: 40px; height: 40px; font-size: 1rem; bottom: 20px; right: 80px; }
+        }
+    `;
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = additionalStyles;
+    document.head.appendChild(styleSheet);
+})();

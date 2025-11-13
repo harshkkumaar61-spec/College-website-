@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Environment
+.venv/
+venv/
+env/
+
+# Database
+*.sqlite3
+db.sqlite3
+
+# IDE
+.idea/
+.vscode/
+
+# Media files (jo user upload karega)
+media/
