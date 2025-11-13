@@ -4,8 +4,8 @@ from .views import (
     MyTokenObtainPairView, 
     UserProfileView,
     UserProfileUpdateView,
-    VerifyEmailView, # <-- 1. YEH IMPORT KARO
-    ContactFormView   # <-- ContactFormView bhi import kar lo (shayad missing tha)
+    VerifyEmailView, # <-- NAYA IMPORT
+    ContactFormView    # <-- NAYA IMPORT
 )
 
 urlpatterns = [
@@ -13,6 +13,6 @@ urlpatterns = [
     path('login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('profile/', UserProfileView.as_view(), name='user_profile'), 
     path('profile/update/', UserProfileUpdateView.as_view(), name='user_profile_update'),
-    path('verify-email/', VerifyEmailView.as_view(), name='verify_email'), # <-- 2. YEH NAYI LINE ADD KARO
-    path('contact/', ContactFormView.as_view(), name='contact'), # <-- 3. YEH BHI ADD KAR LO
+    path('verify-email/', VerifyEmailView.as_view(), name='verify_email'), # <-- NAYI LINE
+    path('contact/', ContactFormView.as_view(), name='contact'), # <-- NAYI LINE
 ]

@@ -130,6 +130,7 @@ SIMPLE_JWT = {
 
 # --- Media Files (Uploaded Images) Settings ---
 MEDIA_URL = '/media/'
+# FINAL FIX: MEDIA_ROOT ko root-level 'media' folder mein point kiya
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Email settings
