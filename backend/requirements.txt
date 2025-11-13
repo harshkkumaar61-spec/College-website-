@@ -163,7 +163,6 @@ protobuf==5.29.5
 psycopg2-binary==2.9.11
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
-PyAudio==0.2.14
 PyAutoGUI==0.9.54
 pybase64==1.4.2
 pycparser==2.23
@@ -258,4 +257,5 @@ xxhash==3.6.0
 yarl==1.22.0
 zipp==3.23.0
 zstandard==0.25.0
+
 
