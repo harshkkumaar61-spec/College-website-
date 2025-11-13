@@ -1,5 +1,5 @@
 // ===== GLOBAL VARIABLES =====
-// FINAL FIX: API_BASE Ngrok URL par set hai
+// FINAL FIX: API_BASE Ngrok URL par set hai (ab sabse important fix ho gaya)
 const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api';
 let currentUser = null;
 let authToken = localStorage.getItem('authToken'); // Token ko load kiya
@@ -647,7 +647,7 @@ function displayResources(resources) {
                 </span>
                 <span class="meta-item">
                     <i class="fas fa-user-graduate"></i> ${uploaderName}
-                </span>
+                </span  >
             </div>
             <p class="resource-description">
                 ${getResourceDescription(resource)}

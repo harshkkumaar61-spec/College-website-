@@ -144,6 +144,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
     
     def post(self, request, *args, **kwargs):
         email = request.data.get('email')
+        user = None # <-- User variable yahan initialize kiya
         try:
             user = CustomUser.objects.get(email=email)
             if not user.is_active:
@@ -158,14 +159,14 @@ class MyTokenObtainPairView(TokenObtainPairView):
         response = super().post(request, *args, **kwargs)
         
         # --- NAYA CODE (LOGIN NOTIFICATION KE LIYE) ---
-        if response.status_code == 200:
+        if response.status_code == 200 and user: # <-- user variable available hai
             try:
-                # 'self.user' parent class ke 'post' method se set ho jaata hai
-                admin_subject = f'User Logged In: {self.user.email}'
+                # AB HUM 'user' OBJECT KO USE KARENGE (self.user nahi)
+                admin_subject = f'User Logged In: {user.email}'
                 admin_message = f"""
                 A user just logged in:
-                Email: {self.user.email}
-                Name: {self.user.first_name} {self.user.last_name}
+                Email: {user.email}
+                Name: {user.first_name} {user.last_name}
                 """
                 send_mail(
                     admin_subject,
