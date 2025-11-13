@@ -13,7 +13,7 @@ async function initializeApp() {
     // Check authentication status
     if (authToken) {
         // Agar token hai, toh profile fetch karne ki koshish karo
-        await fetchUserProfile(); 
+        await fetchUserProfile();
     } else {
         // Agar token nahi hai, toh logged-out UI dikhao
         updateNavForLoggedInUser();
@@ -28,9 +28,12 @@ async function initializeApp() {
 
     // Initialize scroll to top button
     initScrollToTop();
-    
+
     // Naye dropdown ke liye listener setup karein
     setupDropdownListener();
+
+    // NAYA FIX: Email verification check karo
+    checkEmailVerification();
 }
 
 function setupEventListeners() {
@@ -41,6 +44,42 @@ function setupEventListeners() {
             searchResources();
         }
     });
+
+    // NAYA FUNCTION: URL se verification token check karne ke liye
+    async function checkEmailVerification() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('verify_token');
+
+        if (token) {
+            showNotification('Verifying your account...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/verify-email/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                    // Token ko URL se hata do taaki refresh par dobara na chale
+                    history.replaceState(null, '', window.location.pathname);
+                    // Seedha login modal khol do
+                    openLoginModal();
+                } else {
+                    showNotification(data.error || 'Verification failed.', 'error');
+                    history.replaceState(null, '', window.location.pathname);
+                }
+
+            } catch (error) {
+                console.error('Verification error:', error);
+                showNotification('An error occurred during verification.', 'error');
+                history.replaceState(null, '', window.location.pathname);
+            }
+        }
+    }
 
     // Filter changes
     document.getElementById('subjectFilter').addEventListener('change', loadResources);
@@ -54,19 +93,19 @@ function setupEventListeners() {
 
     // Navigation smooth scroll
     setupSmoothScroll();
-    
+
     // NAYA FIX: Contact Form ko API se connect karna
     const contactForm = document.getElementById('contactForm');
     if (contactForm) {
         contactForm.addEventListener('submit', handleContactForm);
     }
-    
+
     // NAYA FIX: Upload Form ko API se connect karna
     const uploadForm = document.getElementById('uploadForm');
     if (uploadForm) {
         uploadForm.addEventListener('submit', handleUpload);
     }
-    
+
     // NAYA FIX: Profile Form ko API se connect karna
     const profileForm = document.getElementById('profileForm');
     if (profileForm) {
@@ -81,22 +120,22 @@ async function fetchUserProfile() {
         updateNavForLoggedInUser(); // Ensure UI is logged out
         return;
     }
-    
+
     try {
-        const response = await fetch(`${API_BASE}/auth/profile/`, { 
+        const response = await fetch(`${API_BASE}/auth/profile/`, {
             headers: {
                 'Authorization': `Bearer ${authToken}` // Token ko header mein bhej rahe hain
             }
         });
-        
+
         if (response.ok) {
             // Agar token valid hai aur details mil gayi
             currentUser = await response.json();
             updateNavForLoggedInUser(); // Navbar ko update karo
-            
+
             // NAYA FIX: Upload modal mein subjects load karo
             populateUploadSubjects();
-            
+
         } else {
             // Token invalid (expire) ho gaya hai
             console.error('Token invalid, logging out.');
@@ -110,7 +149,7 @@ async function fetchUserProfile() {
 
 function updateNavForLoggedInUser() {
     const navAuth = document.querySelector('.nav-auth');
-    
+
     if (currentUser && navAuth) {
         // Check karein ki profile_pic hai ya nahi
         const profilePicUrl = currentUser.profile_pic;
@@ -173,14 +212,14 @@ function logout() {
     localStorage.removeItem('refreshToken');
     currentUser = null;
     authToken = null;
-    
-    updateNavForLoggedInUser(); 
-    
+
+    updateNavForLoggedInUser();
+
     const dropdown = document.getElementById('profileDropdown');
     if (dropdown) {
         dropdown.classList.remove('active');
     }
-    
+
     showNotification('You have been logged out.', 'info');
 }
 
@@ -241,11 +280,11 @@ function switchToLogin() {
 // --- NAYA FIX: Profile aur History Modals ke functions ---
 function openProfileModal() {
     if (!currentUser) return;
-    
+
     // Form mein current user data daalo
     document.getElementById('profileFirstName').value = currentUser.first_name;
     document.getElementById('profileLastName').value = currentUser.last_name;
-    
+
     document.getElementById('profileModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
@@ -261,7 +300,7 @@ async function openHistoryModal() {
         openLoginModal();
         return;
     }
-    
+
     const modalBody = document.getElementById('historyModalBody');
     modalBody.innerHTML = `
         <div class="loading-state">
@@ -273,15 +312,15 @@ async function openHistoryModal() {
 
     try {
         const response = await fetch(`${API_BASE}/resources/history/`, {
-            headers: {'Authorization': `Bearer ${authToken}`}
+            headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to load history');
         }
-        
+
         const historyItems = await response.json();
-        
+
         if (historyItems.length === 0) {
             modalBody.innerHTML = `<p style="text-align:center; color: var(--text-gray);">You haven't downloaded any resources yet.</p>`;
             return;
@@ -301,7 +340,7 @@ async function openHistoryModal() {
                 </div>
             </div>
         `).join('');
-        
+
     } catch (error) {
         console.error('History Error:', error);
         modalBody.innerHTML = `<p style="text-align:center; color: var(--error);">Could not load your history.</p>`;
@@ -320,7 +359,7 @@ function toggleProfileDropdown(event) {
     document.getElementById('profileDropdown').classList.toggle('active');
 }
 function setupDropdownListener() {
-    document.addEventListener('click', function(event) {
+    document.addEventListener('click', function (event) {
         const dropdown = document.getElementById('profileDropdown');
         const profileIcon = document.querySelector('.nav-user-profile');
         if (dropdown && dropdown.classList.contains('active')) {
@@ -344,7 +383,7 @@ async function handleLogin(e) {
     try {
         const response = await fetch(`${API_BASE}/auth/login/`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
         const data = await response.json();
@@ -388,7 +427,7 @@ async function handleRegister(e) {
     try {
         const response = await fetch(`${API_BASE}/auth/register/`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
         const data = await response.json();
@@ -401,7 +440,7 @@ async function handleRegister(e) {
         } else {
             const errorMsg = data.email ? data.email[0] :
                 data.password ? data.password[0] :
-                data.error || 'Registration failed. Please try again.';
+                    data.error || 'Registration failed. Please try again.';
             showNotification(errorMsg, 'error');
         }
     } catch (error) {
@@ -426,7 +465,7 @@ async function handleUpload(e) {
     const submitBtn = form.querySelector('button[type="submit"]');
     const errorContainer = document.getElementById('uploadErrors');
     const originalText = submitBtn.innerHTML;
-    
+
     submitBtn.innerHTML = '<div class="loading"></div> Uploading...';
     submitBtn.disabled = true;
     errorContainer.style.display = 'none';
@@ -447,7 +486,7 @@ async function handleUpload(e) {
             },
             body: formData
         });
-        
+
         const data = await response.json();
 
         if (response.status === 201) {
@@ -496,7 +535,7 @@ async function handleProfileUpdate(e) {
     const formData = new FormData();
     formData.append('first_name', document.getElementById('profileFirstName').value);
     formData.append('last_name', document.getElementById('profileLastName').value);
-    
+
     const profilePicFile = document.getElementById('profilePic').files[0];
     if (profilePicFile) {
         formData.append('profile_pic', profilePicFile);
@@ -659,7 +698,7 @@ async function loadSubjects() {
             const subjects = await response.json();
             populateSubjectFilter(subjects);
             // NAYA FIX: Upload modal mein bhi subjects daalo
-            populateUploadSubjects(subjects); 
+            populateUploadSubjects(subjects);
         }
     } catch (error) {
         console.error('Error loading subjects:', error);
@@ -688,7 +727,7 @@ function populateUploadSubjects(subjects = null) {
         }
         return;
     }
-    
+
     uploadSelect.innerHTML = '<option value="">Select a subject...</option>' +
         subjects.map(subject =>
             `<option value="${subject.id}">${subject.name} ${subject.semester ? '- Sem ' + subject.semester : ''}</option>`
@@ -734,10 +773,10 @@ async function downloadResource(resourceId, pdfUrl) {
         openLoginModal();
         return;
     }
-    
+
     // Naya tab mein kholein
     window.open(pdfUrl, '_blank');
-    
+
     // NAYA FIX: Download ko history mein record karo
     try {
         await fetch(`${API_BASE}/resources/history/record/`, {
@@ -788,7 +827,7 @@ function scrollToTop() {
 
 function initScrollToTop() {
     const scrollBtn = document.getElementById('scrollToTop');
-    if (!scrollBtn) return; 
+    if (!scrollBtn) return;
 
     window.onscroll = () => {
         if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
@@ -832,7 +871,7 @@ function escapeHtml(unsafe) {
 
 function showLoading(containerId) {
     const container = document.getElementById(containerId);
-    if (!container) return; 
+    if (!container) return;
     container.innerHTML = `
         <div class="loading-state">
             <div class="loading-spinner"></div>
@@ -843,7 +882,7 @@ function showLoading(containerId) {
 
 function showError(containerId, message) {
     const container = document.getElementById(containerId);
-    if (!container) return; 
+    if (!container) return;
     container.innerHTML = `
         <div class="error-state">
             <i class="fas fa-exclamation-triangle"></i>
@@ -892,7 +931,7 @@ function getNotificationIcon(type) {
 // ===== CONTACT FORM (NAYA FIX) =====
 async function handleContactForm(e) {
     e.preventDefault();
-    
+
     const form = e.target;
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
@@ -909,7 +948,7 @@ async function handleContactForm(e) {
     try {
         const response = await fetch(`${API_BASE}/auth/contact/`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
 
