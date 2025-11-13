@@ -17,7 +17,13 @@ class ResourceViewSet(viewsets.ModelViewSet):
     """
     Sabhi Resources ko list karne aur naye upload karne ke liye API.
     """
-    queryset = Resource.objects.filter(is_approved=True) # Sirf approved resources dikhao
+    
+    # --- YAHAN FIX KIYA GAYA HAI ---
+    # Ab yeh 'is_approved=True' ka wait nahi karega.
+    # Yeh sabhi resources ko dikha dega jo database mein hain.
+    queryset = Resource.objects.all() 
+    # --- FIX END ---
+
     serializer_class = ResourceSerializer
     
     # Permissions set kar rahe hain

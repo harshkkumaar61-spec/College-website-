@@ -11,7 +11,7 @@ urlpatterns = [
     
     # Humare API URLs
     path('api/auth/', include('accounts.urls')),
-    path('api/resources/', include('resources.urls')), # <-- YEH LINE ADD KI GAYI HAI
+    path('api/resources/', include('resources.urls')), # <-- YEH LINE ADD KAR DI GAYI HAI
 ]
 
 # Development mein media (profile pics, pdfs) files serve karne ke liye

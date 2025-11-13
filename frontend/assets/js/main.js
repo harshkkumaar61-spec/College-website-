@@ -1,9 +1,88 @@
 // ===== GLOBAL VARIABLES =====
-// FINAL FIX: API_BASE Ngrok URL par set hai
-const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api';
+const API_BASE = 'https://ungregariously-unbangled-braxton.ngrok-free.dev/api'; // <-- YEH NGROK URL HAI
 let currentUser = null;
 let authToken = localStorage.getItem('authToken'); // Token ko load kiya
 let currentResources = [];
+
+// ===== 🚀 NAYA TOKEN REFRESH LOGIC 🚀 =====
+
+/**
+ * Yeh function naya Access Token laane ki koshish karta hai.
+ */
+async function refreshToken() {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+        console.log('No refresh token available. Logging out.');
+        logout();
+        return false;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/auth/token/refresh/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 'refresh': refreshToken })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('authToken', data.access); // Naya token save kiya
+            authToken = data.access; // Global variable update kiya
+            console.log('Token refreshed successfully.');
+            return true;
+        } else {
+            // Agar refresh token bhi expire ho gaya hai, toh logout
+            console.log('Refresh token expired or invalid. Logging out.');
+            logout();
+            return false;
+        }
+    } catch (error) {
+        console.error('Error refreshing token:', error);
+        logout();
+        return false;
+    }
+}
+
+/**
+ * Yeh naya fetch 'wrapper' hai.
+ * Yeh har request ko token ke saath bhejta hai.
+ * Agar 401 (Expired) error aata hai, toh yeh 'refreshToken()' ko call karta hai
+ * aur request ko naye token ke saath dobara try karta hai.
+ */
+async function fetchWithAuth(url, options = {}) {
+    // 1. Agar authToken hai, toh use header mein daalo
+    if (authToken) {
+        options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${authToken}`
+        };
+    }
+
+    // 2. Request ko try karo
+    let response = await fetch(url, options);
+
+    // 3. Check karo ki token expire toh nahi hua (401 Error)
+    if (response.status === 401 && localStorage.getItem('refreshToken')) {
+        console.log('Access token expired. Attempting to refresh...');
+        
+        // 4. Token refresh karne ki koshish karo
+        const refreshSuccess = await refreshToken();
+
+        if (refreshSuccess) {
+            // 5. Agar token naya mil gaya, toh header update karke request dobara bhejo
+            options.headers['Authorization'] = `Bearer ${authToken}`; // Naya token
+            console.log('Retrying request with new token...');
+            response = await fetch(url, options); // Retry
+        } else {
+            // 6. Agar refresh fail hua, toh logout() pehle hi ho chuka hai
+            return response; // Original fail response bhej do
+        }
+    }
+
+    return response;
+}
+// ===== 🚀 REFRESH LOGIC END 🚀 =====
+
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', function () {
@@ -22,6 +101,7 @@ async function initializeApp() {
     }
 
     // Check authentication status (Refresh Fix)
+    // Ab yeh logic aur bhi behtar kaam karega 'fetchWithAuth' ke saath
     if (authToken) {
         // Agar token hai, toh profile fetch karne ki koshish karo
         await fetchUserProfile(); 
@@ -84,6 +164,7 @@ function setupEventListeners() {
 // ===== AUTHENTICATION FUNCTIONS =====
 async function verifyEmailToken(token) {
     try {
+        // Is request mein token nahi chahiye, toh normal fetch use karenge
         const response = await fetch(`${API_BASE}/auth/verify/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -110,14 +191,20 @@ async function fetchUserProfile() {
         return;
     }
     try {
-        const response = await fetch(`${API_BASE}/auth/profile/`, { 
-            headers: {'Authorization': `Bearer ${authToken}`}
-        });
+        // === FIX ===
+        // Ab 'fetchWithAuth' use karenge
+        const response = await fetchWithAuth(`${API_BASE}/auth/profile/`);
+        // === END FIX ===
+
         if (response.ok) {
             currentUser = await response.json();
             updateNavForLoggedInUser();
         } else {
             console.error('Token invalid, logging out.');
+            // Agar token invalid/expired hai, toh fetchWithAuth 
+            // ne pehle hi refreshToken() call kiya hoga.
+            // Agar woh bhi fail hua, toh logout() ho chuka hoga.
+            // Hum yahaan ek baar aur call kar lete hain, safe side ke liye.
             logout();
         }
     } catch (error) {
@@ -315,6 +402,7 @@ async function handleLogin(e) {
     submitBtn.disabled = true;
 
     try {
+        // Login request ko token nahi chahiye
         const response = await fetch(`${API_BASE}/auth/login/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -358,6 +446,7 @@ async function handleRegister(e) {
     submitBtn.disabled = true;
 
     try {
+        // Register request ko token nahi chahiye
         const response = await fetch(`${API_BASE}/auth/register/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -389,6 +478,7 @@ async function populateUploadFormSubjects() {
     const select = document.getElementById('uploadSubject');
     select.innerHTML = '<option value="">Loading subjects...</option>';
     try {
+        // Yeh request public hai (AllowAny), toh normal fetch theek hai
         const response = await fetch(`${API_BASE}/resources/subjects/`);
         if (!response.ok) throw new Error('Failed to fetch subjects');
         
@@ -449,13 +539,14 @@ async function handleUpload(e) {
     formData.append('pdf_file', file);
 
     try {
-        const response = await fetch(`${API_BASE}/resources/files/`, {
+        // === FIX ===
+        // 'fetchWithAuth' use karenge.
+        // Yeh FormData ke saath kaam karega (Content-Type set nahi karega).
+        const response = await fetchWithAuth(`${API_BASE}/resources/files/`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            },
             body: formData
         });
+        // === END FIX ===
 
         if (response.status === 201) { // 201 Created
             showNotification('Resource uploaded! It will be visible after admin approval.', 'success');
@@ -511,13 +602,13 @@ async function handleProfileUpdate(e) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/auth/profile/update/`, {
+        // === FIX ===
+        // 'fetchWithAuth' use karenge
+        const response = await fetchWithAuth(`${API_BASE}/auth/profile/update/`, {
             method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            },
             body: formData
         });
+        // === END FIX ===
 
         if (response.ok) {
             const updatedUser = await response.json();
@@ -564,6 +655,7 @@ async function loadResources() {
             url += `?${params.toString()}`;
         }
 
+        // Yeh request public hai (AllowAny), toh normal fetch theek hai
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch resources');
@@ -659,6 +751,7 @@ function getResourceDescription(resource) {
 
 async function loadSubjects() {
     try {
+        // Yeh public hai, normal fetch
         const response = await fetch(`${API_BASE}/resources/subjects/`);
         if (response.ok) {
             const subjects = await response.json();
@@ -728,13 +821,15 @@ async function downloadResource(resourceId, pdfUrl) {
     }
     
     try {
-        await fetch(`${API_BASE}/resources/files/${resourceId}/download/`, {
+        // === FIX ===
+        // 'fetchWithAuth' use karenge
+        await fetchWithAuth(`${API_BASE}/resources/files/${resourceId}/download/`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${authToken}`,
                 'Content-Type': 'application/json'
             }
         });
+        // === END FIX ===
     } catch (error) {
         console.error('Error logging download:', error);
     }
@@ -756,11 +851,10 @@ async function loadHistory() {
     `;
 
     try {
-        const response = await fetch(`${API_BASE}/resources/history/`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
+        // === FIX ===
+        // 'fetchWithAuth' use karenge
+        const response = await fetchWithAuth(`${API_BASE}/resources/history/`);
+        // === END FIX ===
         
         if (!response.ok) {
             throw new Error('Failed to fetch history');
@@ -941,6 +1035,7 @@ async function handleContactForm(e) {
     };
 
     try {
+        // Yeh public hai, normal fetch
         const response = await fetch(`${API_BASE}/auth/contact/`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -985,10 +1080,11 @@ const additionalStyles = `
     .resource-card .download-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     
+    /* --- YEH BUTTON FIX HAI --- */
     .scroll-to-top { 
         position: fixed; 
         bottom: 30px; 
-        right: 100px; 
+        right: 100px; /* AI icon (right: 30px) se alag kiya */
         width: 50px; 
         height: 50px; 
         background: var(--gradient-primary); 
@@ -1013,7 +1109,7 @@ const additionalStyles = `
             height: 40px; 
             font-size: 1rem; 
             bottom: 20px; 
-            right: 80px;
+            right: 80px; /* Mobile par bhi AI icon se alag kiya */
         }
     }
 `;
