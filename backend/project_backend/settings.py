@@ -90,7 +90,7 @@ DATABASES = {
         # Render ke MySQL URL ko automatically le lega
         default=f'mysql://{os.environ.get("DB_USER")}:{os.environ.get("DB_PASS")}@{os.environ.get("DB_HOST")}/{os.environ.get("DB_NAME")}',
         conn_max_age=600,
-        ssl_require=True # Render ke MySQL ke liye SSL zaroori hai
+       
     )
 }
 # Agar local development mein SQLite use karna hai, toh DEBUG ke hisaab se set kar sakte ho
